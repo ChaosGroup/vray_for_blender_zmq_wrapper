@@ -22,6 +22,7 @@
 
 #include <vector>
 
+#include <string.h>
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -122,7 +123,7 @@ struct AttrImage {
 		this->imageType = type;
 		this->data.reset(new char[size]);
 		this->size = size;
-		memcpy(this->data.get(), data, size);
+		::memcpy(this->data.get(), data, size);
 	}
 
 	std::unique_ptr<char[]> data;
