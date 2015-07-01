@@ -84,16 +84,22 @@ ZmqWrapper::ZmqWrapper() :
 			return;
 		}
 
-
-		if (this->flushOnExit && this->messageQue.size()) {
-			std::lock_guard<std::mutex> lock(this->messageMutex);
-			while (this->messageQue.size()) {
-				if (!this->frontend->send(this->messageQue.front().getMessage())) {
-					break;
+		try {
+			if (this->flushOnExit && this->messageQue.size()) {
+				std::lock_guard<std::mutex> lock(this->messageMutex);
+				while (this->messageQue.size()) {
+					if (!this->frontend->send(this->messageQue.front().getMessage())) {
+						break;
+					}
+					this->messageQue.pop();
 				}
-				this->messageQue.pop();
 			}
+		} catch (zmq::error_t & e) {
+			auto x = e.what();
+			assert(false);
+			return;
 		}
+
 
 		this->frontend->close();
 	});
