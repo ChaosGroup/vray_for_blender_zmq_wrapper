@@ -37,14 +37,11 @@ ZmqWrapper::ZmqWrapper() :
 		auto lastActiveTime = std::chrono::high_resolution_clock::now();
 		try {
 			while (this->isWorking) {
-				zmq::message_t incoming;
-
 				auto now = std::chrono::high_resolution_clock::now();
 
 				// send keepalive
 				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastActiveTime).count() > DISCONNECT_TIMEOUT / 2) {
 					zmq::message_t keepAlive(1);
-					*reinterpret_cast<char *>(keepAlive.data()) = 1;
 					if (!this->frontend->send(keepAlive)) {
 						continue;
 					}
@@ -53,7 +50,17 @@ ZmqWrapper::ZmqWrapper() :
 				if (this->messageQue.size() && this->frontend->connected()) {
 					while (this->messageQue.size()) {
 						std::lock_guard<std::mutex> lock(this->messageMutex);
-						if (!this->frontend->send(this->messageQue.front().getMessage())) {
+						auto & msg = this->messageQue.front().getMessage();
+
+						// since the wrapper is relying on msg size of 1 to ping wrap user messages that are with size 1 or less.
+						// since messages are wrapped in VRayMessage user does/should not rely on the actual message size for anything
+						if (msg.size() <= 1) {
+							zmq::message_t wrapper(2);
+							memcpy(wrapper.data(), msg.data(), msg.size());
+							msg.move(&wrapper);
+						}
+						
+						if (!this->frontend->send(msg)) {
 							break;
 						}
 						lastActiveTime = now;
@@ -61,10 +68,9 @@ ZmqWrapper::ZmqWrapper() :
 					}
 				}
 
+				zmq::message_t incoming;
 				if (this->frontend->recv(&incoming)) {
-					// if it's not user message - dont propagate
-					const char * data = reinterpret_cast<const char *>(incoming.data());
-					if (data[0] == 0) {
+					if (incoming.size() > 1) {
 						VRayMessage msg(incoming);
 						this->callback(msg, this);
 					}
