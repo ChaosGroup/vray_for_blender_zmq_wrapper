@@ -6,14 +6,14 @@
 
 ZmqWrapper::ZmqWrapper() :
 	context(new zmq::context_t(1)), frontend(nullptr),
-	isWorking(true), worker(nullptr), isInit(false), flushOnExit(false) {
+	isWorking(true), isInit(false), flushOnExit(false) {
 
 	bool socketInit = false;
 	std::condition_variable threadReady;
 	std::mutex threadMutex;
 
 
-	this->worker = new std::thread([this, &threadReady, &socketInit, &threadMutex] {
+	this->worker = std::thread([this, &threadReady, &socketInit, &threadMutex] {
 		try {
 			std::lock_guard<std::mutex> lock(threadMutex);
 
@@ -114,16 +114,13 @@ ZmqWrapper::ZmqWrapper() :
 }
 
 ZmqWrapper::~ZmqWrapper() {
-	if (this->worker) {
-		this->isWorking = false;
+	this->isWorking = false;
 
-		if (this->worker->joinable()) {
-			this->worker->join();
-		}
-
-		delete this->worker;
-		this->worker = nullptr;
+	if (this->worker.joinable()) {
+		this->worker.join();
 	}
+
+	this->worker = std::thread();
 }
 
 void ZmqWrapper::setFlushOnExit(bool flag) {

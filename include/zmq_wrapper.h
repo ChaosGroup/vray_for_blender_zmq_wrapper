@@ -39,7 +39,7 @@ public:
 
 private:
 	ZmqWrapperCallback_t callback;
-	std::thread * worker;
+	std::thread worker;
 	bool isWorking;
 
 	std::unique_ptr<zmq::context_t> context;
