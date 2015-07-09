@@ -42,8 +42,8 @@ ZmqWrapper::ZmqWrapper() :
 				// send keepalive
 				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastActiveTime).count() > DISCONNECT_TIMEOUT / 2) {
 					zmq::message_t keepAlive(1);
-					if (!this->frontend->send(keepAlive)) {
-						continue;
+					if (this->frontend->send(keepAlive)) {
+						lastActiveTime = now;
 					}
 				}
 
@@ -52,7 +52,7 @@ ZmqWrapper::ZmqWrapper() :
 						std::lock_guard<std::mutex> lock(this->messageMutex);
 						auto & msg = this->messageQue.front().getMessage();
 
-						// since the wrapper is relying on msg size of 1 to ping wrap user messages that are with size 1 or less.
+						// since the wrapper is relying on msg size of 1 to ping wrap(pad so parsing is not broken) user messages that are with size 1 or less.
 						// since messages are wrapped in VRayMessage user does/should not rely on the actual message size for anything
 						if (msg.size() <= 1) {
 							zmq::message_t wrapper(2);
