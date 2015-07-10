@@ -35,8 +35,11 @@ ZmqWrapper::ZmqWrapper() :
 		}
 
 		auto lastActiveTime = std::chrono::high_resolution_clock::now();
+		bool didSomeWork = false;
 		try {
 			while (this->isWorking) {
+				didSomeWork = false;
+
 				auto now = std::chrono::high_resolution_clock::now();
 
 				// send keepalive
@@ -45,10 +48,12 @@ ZmqWrapper::ZmqWrapper() :
 					if (this->frontend->send(keepAlive)) {
 						lastActiveTime = now;
 					}
+					didSomeWork = true;
 				}
 
 				if (this->messageQue.size() && this->frontend->connected()) {
 					while (this->messageQue.size()) {
+						didSomeWork = true;
 						std::lock_guard<std::mutex> lock(this->messageMutex);
 						auto & msg = this->messageQue.front().getMessage();
 
@@ -70,13 +75,17 @@ ZmqWrapper::ZmqWrapper() :
 
 				zmq::message_t incoming;
 				if (this->frontend->recv(&incoming)) {
+					didSomeWork = true;
 					if (incoming.size() > 1) {
 						VRayMessage msg(incoming);
 						this->callback(msg, this);
 					}
 				}
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				if (!didSomeWork) {
+					// if we didn't do anything - just sleep and dont busy wait
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				}
 			}
 		} catch (zmq::error_t & e) {
 			auto x = e.what();
