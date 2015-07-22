@@ -40,6 +40,7 @@ ZmqWrapper::ZmqWrapper() :
 			while (this->isWorking) {
 				didSomeWork = false;
 
+#ifdef VRAY_ZMQ_PING
 				auto now = std::chrono::high_resolution_clock::now();
 
 				// send keepalive
@@ -50,7 +51,7 @@ ZmqWrapper::ZmqWrapper() :
 					}
 					didSomeWork = true;
 				}
-
+#endif
 				if (this->messageQue.size() && this->frontend->connected()) {
 					while (this->messageQue.size()) {
 						didSomeWork = true;
@@ -68,7 +69,9 @@ ZmqWrapper::ZmqWrapper() :
 						if (!this->frontend->send(msg)) {
 							break;
 						}
+#ifdef VRAY_ZMQ_PING
 						lastActiveTime = now;
+#endif
 						this->messageQue.pop();
 					}
 				}
@@ -76,7 +79,12 @@ ZmqWrapper::ZmqWrapper() :
 				zmq::message_t incoming;
 				if (this->frontend->recv(&incoming)) {
 					didSomeWork = true;
-					if (incoming.size() > 1) {
+#ifdef VRAY_ZMQ_PING
+					bool propagateMessage = incoming.size() > 1;
+#else
+					bool propagateMessage = true;
+#endif
+					if (propagateMessage) {
 						VRayMessage msg(incoming);
 						this->callback(msg, this);
 					}

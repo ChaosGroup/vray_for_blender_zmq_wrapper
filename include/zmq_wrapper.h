@@ -14,6 +14,7 @@
 #include "zmq_message.hpp"
 
 static const uint64_t DISCONNECT_TIMEOUT = 5000;
+#define VRAY_ZMQ_PING
 
 /**
  * Async wrapper for zmq::socket_t with callback on data received.
