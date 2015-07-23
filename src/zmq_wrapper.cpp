@@ -4,9 +4,9 @@
 #include <condition_variable>
 #include <random>
 
-ZmqWrapper::ZmqWrapper() :
-	context(new zmq::context_t(1)), frontend(nullptr),
-	isWorking(true), isInit(false), flushOnExit(false) {
+ZmqWrapper::ZmqWrapper():
+context(new zmq::context_t(1)), frontend(nullptr),
+isWorking(true), isInit(false), flushOnExit(false) {
 
 	bool socketInit = false;
 	std::condition_variable threadReady;
@@ -19,10 +19,6 @@ ZmqWrapper::ZmqWrapper() :
 
 			this->frontend = std::unique_ptr<zmq::socket_t>(new zmq::socket_t(*(this->context), ZMQ_DEALER));
 
-			int timeOut = 100;
-			this->frontend->setsockopt(ZMQ_RCVTIMEO, &timeOut, sizeof(timeOut));
-			timeOut *= 10;
-			this->frontend->setsockopt(ZMQ_SNDTIMEO, &timeOut, sizeof(timeOut));
 			socketInit = true;
 		} catch (zmq::error_t & e) {
 			this->isWorking = false;
@@ -46,6 +42,7 @@ ZmqWrapper::ZmqWrapper() :
 				// send keepalive
 				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastActiveTime).count() > DISCONNECT_TIMEOUT / 2) {
 					zmq::message_t keepAlive(1);
+					this->frontend->send("", 0, ZMQ_SNDMORE);
 					if (this->frontend->send(keepAlive)) {
 						lastActiveTime = now;
 					}
@@ -65,10 +62,16 @@ ZmqWrapper::ZmqWrapper() :
 							memcpy(wrapper.data(), msg.data(), msg.size());
 							msg.move(&wrapper);
 						}
-						
-						if (!this->frontend->send(msg)) {
-							break;
+
+						this->frontend->send("", 0, ZMQ_SNDMORE);
+
+						try {
+							this->frontend->send(msg);
+						} catch (zmq::error_t & e) {
+							std::cout << e.what() << std::endl;
+							assert(false && "Failed to send payload after empty frame && exception");
 						}
+
 #ifdef VRAY_ZMQ_PING
 						lastActiveTime = now;
 #endif
@@ -76,8 +79,10 @@ ZmqWrapper::ZmqWrapper() :
 					}
 				}
 
-				zmq::message_t incoming;
-				if (this->frontend->recv(&incoming)) {
+				zmq::message_t incoming, e;
+				if (this->frontend->recv(&e, ZMQ_NOBLOCK)) {
+					assert(!e.size() && "No empty frame expected from server!");
+					this->frontend->recv(&incoming);
 					didSomeWork = true;
 #ifdef VRAY_ZMQ_PING
 					bool propagateMessage = incoming.size() > 1;
@@ -96,27 +101,9 @@ ZmqWrapper::ZmqWrapper() :
 				}
 			}
 		} catch (zmq::error_t & e) {
-			auto x = e.what();
 			assert(false);
 			return;
 		}
-
-		try {
-			if (this->flushOnExit && this->messageQue.size()) {
-				std::lock_guard<std::mutex> lock(this->messageMutex);
-				while (this->messageQue.size()) {
-					if (!this->frontend->send(this->messageQue.front().getMessage())) {
-						break;
-					}
-					this->messageQue.pop();
-				}
-			}
-		} catch (zmq::error_t & e) {
-			auto x = e.what();
-			assert(false);
-			return;
-		}
-
 
 		this->frontend->close();
 	});
