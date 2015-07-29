@@ -68,7 +68,7 @@ isWorking(true), isInit(false), flushOnExit(false) {
 						try {
 							this->frontend->send(msg);
 						} catch (zmq::error_t & e) {
-							std::cout << e.what() << std::endl;
+							puts(e.what());
 							assert(false && "Failed to send payload after empty frame && exception");
 						}
 
@@ -101,11 +101,12 @@ isWorking(true), isInit(false), flushOnExit(false) {
 				}
 			}
 		} catch (zmq::error_t & e) {
-			assert(false);
-			return;
+			puts(e.what());
+			assert(false && "Zmq exception!");
 		}
 
 		this->frontend->close();
+		this->isWorking = false;
 	});
 
 
@@ -115,6 +116,10 @@ isWorking(true), isInit(false), flushOnExit(false) {
 		// wait for the thread to finish initing the socket, else bind & connect might be called before init
 		threadReady.wait(lock, [&socketInit] { return socketInit; });
 	}
+}
+
+bool ZmqWrapper::good() const {
+	return this->isWorking;
 }
 
 ZmqWrapper::~ZmqWrapper() {

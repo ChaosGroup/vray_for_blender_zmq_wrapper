@@ -2,7 +2,6 @@
 #define _ZMQ_WRAPPER_H_
 
 #include <string>
-#include <iostream>
 #include <functional>
 #include <thread>
 #include <zmq.hpp>
@@ -37,6 +36,8 @@ public:
 	// if set, all messages will be sent when dtor is called
 	void setFlushOnExit(bool flag);
 	bool getFlushOnexit() const;
+
+	bool good() const;
 
 private:
 	ZmqWrapperCallback_t callback;
