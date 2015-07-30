@@ -8,6 +8,7 @@
 #include <memory>
 #include <queue>
 #include <mutex>
+#include <cstdio>
 
 #include "base_types.h"
 #include "zmq_message.hpp"
