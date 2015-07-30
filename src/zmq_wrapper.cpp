@@ -33,6 +33,7 @@ isWorking(true), isInit(false), flushOnExit(false) {
 		}
 
 		auto lastActiveTime = std::chrono::high_resolution_clock::now();
+		zmq::message_t emptyFrame(0);
 		bool didSomeWork = false;
 		try {
 			while (this->isWorking) {
@@ -44,7 +45,7 @@ isWorking(true), isInit(false), flushOnExit(false) {
 				// send keepalive
 				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastActiveTime).count() > DISCONNECT_TIMEOUT / 2) {
 					zmq::message_t keepAlive(1);
-					this->frontend->send("", 0, ZMQ_SNDMORE);
+					this->frontend->send(emptyFrame, ZMQ_SNDMORE);
 					if (this->frontend->send(keepAlive)) {
 						lastActiveTime = now;
 					}
@@ -65,7 +66,14 @@ isWorking(true), isInit(false), flushOnExit(false) {
 							msg.move(&wrapper);
 						}
 
-						this->frontend->send("", 0, ZMQ_SNDMORE);
+						int wait = 200;
+						this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
+						if (!this->frontend->send(emptyFrame, ZMQ_SNDMORE)) {
+							break;
+						}
+						wait = -1;
+						this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
+
 
 						try {
 							this->frontend->send(msg);
