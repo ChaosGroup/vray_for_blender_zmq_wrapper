@@ -18,6 +18,8 @@ isWorking(true), isInit(false), flushOnExit(false) {
 			std::lock_guard<std::mutex> lock(threadMutex);
 
 			this->frontend = std::unique_ptr<zmq::socket_t>(new zmq::socket_t(*(this->context), ZMQ_DEALER));
+			int linger = 0;
+			this->frontend->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
 			socketInit = true;
 		} catch (zmq::error_t & e) {
