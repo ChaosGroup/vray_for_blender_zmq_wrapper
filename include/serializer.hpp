@@ -108,7 +108,7 @@ inline SerializerStream & operator<<(SerializerStream & stream, const VRayBaseTy
 
 template <>
 inline SerializerStream & operator<<(SerializerStream & stream, const VRayBaseTypes::AttrInstancer & inst) {
-	stream << inst.data.getCount();
+	stream << inst.frameNumber << inst.data.getCount();
 	if (!inst.data.empty()) {
 		for (auto & item : *(inst.data.getData())) {
 			stream << item;

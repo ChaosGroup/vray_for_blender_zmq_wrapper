@@ -140,8 +140,8 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrInstancer & inst) {
-	int size;
-	stream >> size;
+	int size, frameNumber;
+	stream >> inst.frameNumber >> size;
 	inst.data.init();
 	for (int c = 0; c < size; ++c) {
 		VRayBaseTypes::AttrInstancer::Item item;
