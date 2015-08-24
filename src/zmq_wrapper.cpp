@@ -6,7 +6,7 @@
 
 ZmqWrapper::ZmqWrapper():
 context(new zmq::context_t(1)), frontend(nullptr),
-isWorking(true), isInit(false), flushOnExit(false) {
+isWorking(true), isInit(false), flushOnExit(false), errorConnect(false) {
 
 	bool socketInit = false;
 	std::condition_variable threadReady;
@@ -28,8 +28,12 @@ isWorking(true), isInit(false), flushOnExit(false) {
 		}
 		threadReady.notify_all();
 
-		while (!this->isInit) {
+		while (!this->isInit || this->errorConnect) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+		if (this->errorConnect) {
+			this->isWorking = false;
+			return;
 		}
 
 		auto lastActiveTime = std::chrono::high_resolution_clock::now();
@@ -128,6 +132,10 @@ isWorking(true), isInit(false), flushOnExit(false) {
 	}
 }
 
+bool ZmqWrapper::connected() const {
+	return this->isInit && !this->errorConnect;
+}
+
 bool ZmqWrapper::good() const {
 	return this->isWorking;
 }
@@ -174,6 +182,11 @@ void ZmqClient::connect(const char * addr) {
 
 	this->frontend->setsockopt(ZMQ_IDENTITY, &id, sizeof(id));
 
-	this->frontend->connect(addr);
+	try {
+		this->frontend->connect(addr);
+	} catch (zmq::error_t & e) {
+		puts(e.what());
+		this->errorConnect = false;
+	}
 	this->isInit = true;
 }

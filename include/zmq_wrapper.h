@@ -39,17 +39,18 @@ public:
 	bool getFlushOnexit() const;
 
 	bool good() const;
+	bool connected() const;
 
 private:
 	ZmqWrapperCallback_t callback;
 	std::thread worker;
-	bool isWorking;
 
 	std::unique_ptr<zmq::context_t> context;
 	std::queue<VRayMessage> messageQue;
 	std::mutex messageMutex;
 
 protected:
+	bool isWorking, errorConnect;
 	bool isInit, flushOnExit;
 	std::unique_ptr<zmq::socket_t> frontend;
 };
