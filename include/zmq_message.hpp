@@ -59,32 +59,48 @@ public:
 	enum class RendererAction { None, Init, Free, Start, Stop, Pause, Resume, Resize,
 		_ArgumentRenderAction,
 		AddHosts, RemoveHosts, LoadScene, AppendScene, ExportScene, SetRenderMode, SetAnimationProperties,
-        SetCurrentTime, ClearFrameValues };
+        SetCurrentTime, ClearFrameValues, FrameRendered, SetRendererType };
 
 	enum class ValueSetter { None, Default, AsString };
+	enum class RendererType { None, RT, Animation };
 
 
 	VRayMessage(zmq::message_t & message):
-		message(0),	type(Type::None),
+		message(0),
+		type(Type::None),
 		valueType(VRayBaseTypes::ValueType::ValueTypeUnknown),
-		pluginAction(PluginAction::None), rendererAction(RendererAction::None), valueSetter(ValueSetter::None) {
+		pluginAction(PluginAction::None),
+		rendererAction(RendererAction::None),
+		valueSetter(ValueSetter::None),
+		rendererType(RendererType::None)
+	{
 		this->message.move(&message);
 		this->parse();
 	}
 
 	VRayMessage(VRayMessage && other):
-		message(0), type(other.type), valueType(other.valueType),
-		pluginAction(other.pluginAction), pluginName(std::move(other.pluginName)),
-		pluginProperty(std::move(other.pluginProperty)), rendererAction(other.rendererAction),
-		valueSetter(ValueSetter::None) {
+		message(0),
+		type(other.type),
+		valueType(other.valueType),
+		pluginAction(other.pluginAction),
+		pluginName(std::move(other.pluginName)),
+		pluginProperty(std::move(other.pluginProperty)),
+		rendererAction(other.rendererAction),
+		valueSetter(ValueSetter::None),
+		rendererType(other.rendererType)
+	{
 		this->message.move(&other.message);
 	}
 
 	VRayMessage(int size):
-		message(size), type(Type::None),
+		message(size),
+		type(Type::None),
 		valueType(VRayBaseTypes::ValueType::ValueTypeUnknown),
-		pluginAction(PluginAction::None), rendererAction(RendererAction::None),
-		valueSetter(ValueSetter::None) {
+		pluginAction(PluginAction::None),
+		rendererAction(RendererAction::None),
+		valueSetter(ValueSetter::None),
+		rendererType(RendererType::None)
+	{
 	}
 
 	zmq::message_t & getMessage() {
@@ -117,6 +133,10 @@ public:
 
 	ValueSetter getValueSetter() const {
 		return valueSetter;
+	}
+
+	RendererType getRendererType() const {
+		return rendererType;
 	}
 
 	void getRendererSize(int & width, int & height) {
@@ -197,6 +217,12 @@ public:
 		return fromStream(strm);
 	}
 
+	static VRayMessage createMessage(RendererType type) {
+		SerializerStream strm;
+		strm << Type::ChangeRenderer << RendererAction::SetRendererType << type;
+		return fromStream(strm);
+	}
+
 
 	static VRayMessage createMessage(const RendererAction & action, int width, int height) {
 		assert(action == RendererAction::Resize && "Resize renderer action required");
@@ -265,6 +291,8 @@ public:
 			getValue<AttrSimpleType<std::string>>()->~AttrSimpleType();
 			break;
 		}
+
+		memset(value_data, 0, MAX_MESSAGE_SIZE);
 	}
 
 private:
@@ -378,6 +406,8 @@ private:
 			stream >> rendererAction;
 			if (rendererAction == RendererAction::Resize) {
 				stream >> rendererWidth >> rendererHeight;
+			} else if (rendererAction == RendererAction::SetRendererType) {
+				stream >> rendererType;
 			} else if (rendererAction > RendererAction::_ArgumentRenderAction) {
 				readValue(stream);
             }
@@ -397,6 +427,7 @@ private:
 	PluginAction pluginAction;
 	RendererAction rendererAction;
 	ValueSetter valueSetter;
+	RendererType rendererType;
 
 	int rendererWidth, rendererHeight;
 	VRayBaseTypes::ValueType valueType;
