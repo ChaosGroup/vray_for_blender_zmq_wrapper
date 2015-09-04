@@ -73,7 +73,8 @@ public:
 		pluginAction(PluginAction::None),
 		rendererAction(RendererAction::None),
 		valueSetter(ValueSetter::None),
-		rendererType(RendererType::None)
+		rendererType(RendererType::None),
+		rendererStatus(RendererStatus::None)
 	{
 		this->message.move(&message);
 		this->parse();
@@ -88,7 +89,8 @@ public:
 		pluginProperty(std::move(other.pluginProperty)),
 		rendererAction(other.rendererAction),
 		valueSetter(ValueSetter::None),
-		rendererType(other.rendererType)
+		rendererType(other.rendererType),
+		rendererStatus(other.rendererStatus)
 	{
 		this->message.move(&other.message);
 	}
@@ -100,7 +102,8 @@ public:
 		pluginAction(PluginAction::None),
 		rendererAction(RendererAction::None),
 		valueSetter(ValueSetter::None),
-		rendererType(RendererType::None)
+		rendererType(RendererType::None),
+		rendererStatus(RendererStatus::None)
 	{
 	}
 
@@ -226,7 +229,7 @@ public:
 	static VRayMessage createMessage(RendererStatus status, const T & val) {
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(val);
 		SerializerStream strm;
-		strm << Type::ChangeRenderer << RendererAction::SetRendererStatus << valWrapper.getType() << valWrapper;
+		strm << Type::ChangeRenderer << RendererAction::SetRendererStatus << status << valWrapper.getType() << valWrapper;
 		return fromStream(strm);
 	}
 
