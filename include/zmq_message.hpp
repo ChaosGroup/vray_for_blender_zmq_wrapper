@@ -222,7 +222,7 @@ public:
 	static VRayMessage createMessage(RendererStatus status, const T & val) {
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(val);
 		SerializerStream strm;
-		strm << Type::ChangeRenderer << RendererStatus::SetRendererStatus << valWrapper.getType() << valWrapper
+		strm << Type::ChangeRenderer << RendererAction::SetRendererStatus << valWrapper.getType() << valWrapper;
 		return fromStream(strm);
 	}
 
