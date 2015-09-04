@@ -140,6 +140,10 @@ public:
 		return rendererType;
 	}
 
+	RendererStatus getRendererStatus() const {
+		return rendererStatus;
+	}
+
 	void getRendererSize(int & width, int & height) {
 		width = this->rendererWidth;
 		height = this->rendererHeight;
@@ -417,6 +421,9 @@ private:
 				stream >> rendererWidth >> rendererHeight;
 			} else if (rendererAction == RendererAction::SetRendererType) {
 				stream >> rendererType;
+			} else if (rendererAction == RendererAction::SetRendererStatus) {
+				stream >> rendererStatus;
+				readValue(stream);
 			} else if (rendererAction > RendererAction::_ArgumentRenderAction) {
 				readValue(stream);
             }
@@ -437,6 +444,7 @@ private:
 	RendererAction rendererAction;
 	ValueSetter valueSetter;
 	RendererType rendererType;
+	RendererStatus rendererStatus;
 
 	int rendererWidth, rendererHeight;
 	VRayBaseTypes::ValueType valueType;
