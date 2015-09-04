@@ -59,10 +59,11 @@ public:
 	enum class RendererAction { None, Init, Free, Start, Stop, Pause, Resume, Resize,
 		_ArgumentRenderAction,
 		AddHosts, RemoveHosts, LoadScene, AppendScene, ExportScene, SetRenderMode, SetAnimationProperties,
-        SetCurrentTime, ClearFrameValues, FrameRendered, SetRendererType };
+        SetCurrentTime, ClearFrameValues, SetRendererStatus, SetRendererType };
 
 	enum class ValueSetter { None, Default, AsString };
 	enum class RendererType { None, RT, Animation };
+	enum class RendererStatus { None, Abort, Continue };
 
 
 	VRayMessage(zmq::message_t & message):
@@ -214,6 +215,14 @@ public:
 		SerializerStream strm;
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(value);
 		strm << Type::ChangeRenderer << action << valWrapper.getType() << valWrapper;
+		return fromStream(strm);
+	}
+
+	template <typename T>
+	static VRayMessage createMessage(RendererStatus status, const T & val) {
+		VRayBaseTypes::AttrSimpleType<T> valWrapper(val);
+		SerializerStream strm;
+		strm << Type::ChangeRenderer << RendererStatus::SetRendererStatus << valWrapper.getType() << valWrapper
 		return fromStream(strm);
 	}
 
