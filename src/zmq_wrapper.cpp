@@ -23,6 +23,7 @@ isWorking(true), isInit(false), flushOnExit(false), errorConnect(false) {
 
 			socketInit = true;
 		} catch (zmq::error_t & e) {
+			puts(e.what());
 			this->isWorking = false;
 			return;
 		}
