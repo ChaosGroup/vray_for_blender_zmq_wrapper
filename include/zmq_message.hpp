@@ -66,46 +66,45 @@ public:
 	enum class RendererStatus { None, Abort, Continue };
 
 
-	VRayMessage(zmq::message_t & message):
-		message(0),
-		type(Type::None),
-		valueType(VRayBaseTypes::ValueType::ValueTypeUnknown),
-		pluginAction(PluginAction::None),
-		rendererAction(RendererAction::None),
-		valueSetter(ValueSetter::None),
-		rendererType(RendererType::None),
-		rendererStatus(RendererStatus::None)
+	VRayMessage(zmq::message_t &message)
+		: message(0)
+		, type(Type::None)
+		, rendererAction(RendererAction::None)
+		, rendererType(RendererType::None)
+		, rendererStatus(RendererStatus::None)
+		, valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
+		, valueSetter(ValueSetter::None)
+		, pluginAction(PluginAction::None)
 	{
 		this->message.move(&message);
 		this->parse();
 	}
 
-	VRayMessage(VRayMessage && other):
-		message(0),
-		type(other.type),
-		valueType(other.valueType),
-		pluginAction(other.pluginAction),
-		pluginName(std::move(other.pluginName)),
-		pluginProperty(std::move(other.pluginProperty)),
-		rendererAction(other.rendererAction),
-		valueSetter(ValueSetter::None),
-		rendererType(other.rendererType),
-		rendererStatus(other.rendererStatus)
+	VRayMessage(VRayMessage && other)
+		: message(0)
+		, type(other.type)
+		, rendererAction(other.rendererAction)
+		, rendererType(other.rendererType)
+		, rendererStatus(other.rendererStatus)
+		, valueType(other.valueType)
+		, valueSetter(ValueSetter::None)
+		, pluginAction(other.pluginAction)
+		, pluginName(std::move(other.pluginName))
+		, pluginProperty(std::move(other.pluginProperty))
 	{
 		this->message.move(&other.message);
 	}
 
-	VRayMessage(int size):
-		message(size),
-		type(Type::None),
-		valueType(VRayBaseTypes::ValueType::ValueTypeUnknown),
-		pluginAction(PluginAction::None),
-		rendererAction(RendererAction::None),
-		valueSetter(ValueSetter::None),
-		rendererType(RendererType::None),
-		rendererStatus(RendererStatus::None)
-	{
-	}
+	VRayMessage(int size)
+		: message(size)
+		, type(Type::None)
+		, rendererAction(RendererAction::None)
+		, rendererType(RendererType::None)
+		, rendererStatus(RendererStatus::None)
+		, valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
+		, valueSetter(ValueSetter::None)
+		, pluginAction(PluginAction::None)
+	{}
 
 	zmq::message_t & getMessage() {
 		return this->message;
@@ -161,13 +160,8 @@ public:
 		return valueType;
 	}
 
-	VRayMessage(const VRayMessage &) = delete;
-	VRayMessage & operator=(const VRayMessage &) = delete;
-
-
-
 	/// Static methods for creating messages
-
+	///
 	static VRayMessage createMessage(const std::string & pluginName, const std::string & pluginType) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << pluginName << PluginAction::Create << pluginType;
@@ -207,8 +201,7 @@ public:
 		return fromStream(strm);
 	}
 
-	/// create message to control renderer
-
+	/// Create message to control renderer
 	static VRayMessage createMessage(const RendererAction & action) {
 		assert(action < RendererAction::_ArgumentRenderAction && "Renderer action provided requires argument!");
 		SerializerStream strm;
@@ -239,14 +232,12 @@ public:
 		return fromStream(strm);
 	}
 
-
 	static VRayMessage createMessage(const RendererAction & action, int width, int height) {
 		assert(action == RendererAction::Resize && "Resize renderer action required");
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << RendererAction::Resize << width << height;
 		return fromStream(strm);
 	}
-
 
 	~VRayMessage() {
 		using namespace VRayBaseTypes;
@@ -312,7 +303,6 @@ public:
 	}
 
 private:
-
 	template <typename T>
 	T * setValue() {
 		T * ptr = reinterpret_cast<T *>(this->value_data);
@@ -325,7 +315,6 @@ private:
 		memcpy(msg.message.data(), strm.getData(), strm.getSize());
 		return msg;
 	}
-
 
 	void readValue(DeserializerStream & stream) {
 		using namespace VRayBaseTypes;
@@ -411,25 +400,31 @@ private:
 			if (pluginAction == PluginAction::Update) {
 				stream >> pluginProperty >> valueSetter;
 				readValue(stream);
-			} else if (pluginAction == PluginAction::Create) {
+			}
+			else if (pluginAction == PluginAction::Create) {
 				if (stream.hasMore()) {
 					stream >> pluginType;
 				}
 			}
-		} else if (type == Type::SingleValue) {
+		}
+		else if (type == Type::SingleValue) {
 			readValue(stream);
-		} else if (type == Type::ChangeRenderer) {
+		}
+		else if (type == Type::ChangeRenderer) {
 			stream >> rendererAction;
 			if (rendererAction == RendererAction::Resize) {
 				stream >> rendererWidth >> rendererHeight;
-			} else if (rendererAction == RendererAction::SetRendererType) {
+			}
+			else if (rendererAction == RendererAction::SetRendererType) {
 				stream >> rendererType;
-			} else if (rendererAction == RendererAction::SetRendererStatus) {
+			}
+			else if (rendererAction == RendererAction::SetRendererStatus) {
 				stream >> rendererStatus;
 				readValue(stream);
-			} else if (rendererAction > RendererAction::_ArgumentRenderAction) {
+			}
+			else if (rendererAction > RendererAction::_ArgumentRenderAction) {
 				readValue(stream);
-            }
+			}
 		}
 	}
 
@@ -437,20 +432,30 @@ private:
 		return reinterpret_cast<char*>(this->message.data());
 	}
 
+	zmq::message_t            message;
+	Type                      type;
+
+	RendererAction            rendererAction;
+	RendererType              rendererType;
+	RendererStatus            rendererStatus;
+
+	VRayBaseTypes::ValueType  valueType;
+	ValueSetter               valueSetter;
+
+	PluginAction              pluginAction;
+	std::string               pluginName;
+	std::string               pluginType;
+	std::string               pluginProperty;
+
+	int                       rendererWidth;
+	int                       rendererHeight;
+
+private:
+	VRayMessage(const VRayMessage&) = delete;
+	VRayMessage& operator=(const VRayMessage&) = delete;
+
 	uint8_t value_data[MAX_MESSAGE_SIZE];
 
-	zmq::message_t message;
-	std::string pluginName, pluginType, pluginProperty;
-
-	Type type;
-	PluginAction pluginAction;
-	RendererAction rendererAction;
-	ValueSetter valueSetter;
-	RendererType rendererType;
-	RendererStatus rendererStatus;
-
-	int rendererWidth, rendererHeight;
-	VRayBaseTypes::ValueType valueType;
 };
 
 #endif // _ZMQ_MESSAGE_H_
