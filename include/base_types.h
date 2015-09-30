@@ -386,7 +386,7 @@ struct AttrList {
 		return m_Ptr.get()->size();
 	}
 
-// wont work for AttrList<std::string>
+	// NOTE: Won't work for AttrList<std::string>
 	int getBytesCount() const {
 		return getCount() * sizeof(T);
 	}
