@@ -26,7 +26,8 @@ struct max_type_sizeof<T, Q> {
 };
 
 // maximum possible size of a value in the message
-const int MAX_MESSAGE_SIZE = max_type_sizeof<VRayBaseTypes::AttrColor,
+const int MAX_MESSAGE_SIZE = max_type_sizeof<
+VRayBaseTypes::AttrColor,
 VRayBaseTypes::AttrAColor,
 VRayBaseTypes::AttrVector,
 VRayBaseTypes::AttrVector2,
