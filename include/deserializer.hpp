@@ -7,8 +7,11 @@ class DeserializerStream {
 public:
 	DeserializerStream() = delete;
 
-	DeserializerStream(const char * data, int size): first(data), last(data + size), current(data) {
-	}
+	DeserializerStream(const char * data, int size)
+	    : first(data)
+	    , current(data)
+	    , last(data + size)
+	{}
 
 	bool hasMore() const {
 		return current < last;
@@ -47,7 +50,9 @@ public:
 	}
 
 private:
-	const char * first, * current, * last;
+	const char *first;
+	const char *current;
+	const char *last;
 };
 
 template <typename T>
