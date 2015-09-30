@@ -63,7 +63,7 @@ DeserializerStream & operator>>(DeserializerStream & stream, T & value) {
 
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, std::string & value) {
-	int size;
+	int size = 0;
 	stream >> size;
 
 	// either push back char by char, or do this
@@ -87,7 +87,7 @@ inline DeserializerStream & operator>> (DeserializerStream & stream, VRayBaseTyp
 template <typename Q>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<Q> & list) {
 	list.init();
-	int size;
+	int size = 0;
 	stream >> size;
 
 	list.getData()->resize(size);
@@ -100,7 +100,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<VRayBaseTypes::AttrPlugin> & list) {
 	list.init();
-	int size;
+	int size = 0;
 	stream >> size;
 	for (int c = 0; c < size; ++c) {
 		VRayBaseTypes::AttrPlugin item;
@@ -113,7 +113,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<std::string> & list) {
 	list.init();
-	int size;
+	int size = 0;
 	stream >> size;
 	for (int c = 0; c < size; ++c) {
 		std::string item;
@@ -126,7 +126,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrMapChannels & map) {
 	map.data.clear();
-	int size;
+	int size = 0;
 	stream >> size;
 	for (int c = 0; c < size; ++c) {
 		std::string key;
@@ -145,7 +145,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrInstancer & inst) {
-	int size;
+	int size = 0;
 	stream >> inst.frameNumber >> size;
 	inst.data.init();
 	for (int c = 0; c < size; ++c) {
