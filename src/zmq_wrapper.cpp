@@ -4,14 +4,18 @@
 #include <condition_variable>
 #include <random>
 
-ZmqWrapper::ZmqWrapper():
-context(new zmq::context_t(1)), frontend(nullptr),
-isWorking(true), isInit(false), flushOnExit(false), errorConnect(false) {
 
+ZmqWrapper::ZmqWrapper()
+    : context(new zmq::context_t(1))
+    , isWorking(true)
+    , errorConnect(false)
+    , isInit(false)
+    , flushOnExit(false)
+    , frontend(nullptr)
+{
 	bool socketInit = false;
 	std::condition_variable threadReady;
 	std::mutex threadMutex;
-
 
 	this->worker = std::thread([this, &threadReady, &socketInit, &threadMutex] {
 		try {

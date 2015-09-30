@@ -50,8 +50,10 @@ private:
 	std::mutex messageMutex;
 
 protected:
-	bool isWorking, errorConnect;
-	bool isInit, flushOnExit;
+	int isWorking;
+	int errorConnect;
+	int isInit;
+	int flushOnExit;
 	std::unique_ptr<zmq::socket_t> frontend;
 };
 
