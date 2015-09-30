@@ -212,15 +212,15 @@ struct AttrVector {
 		z(_z)
 	{}
 
-	float operator * (const AttrVector other) {
+	float operator * (const AttrVector &other) {
 		return x * other.x + y * other.y + z * other.z;
 	}
 
-	AttrVector operator - (const AttrVector other) {
+	AttrVector operator - (const AttrVector &other) {
 		return AttrVector(x - other.x, y - other.y, z - other.z);
 	}
 
-	bool operator == (const AttrVector other) {
+	bool operator == (const AttrVector &other) {
 		return (x == other.x) && (y == other.y) && (z == other.z);
 	}
 
@@ -507,12 +507,12 @@ struct AttrValue {
 		valString = attrValue;
 	}
 
-	AttrValue(const AttrPlugin attrValue) {
+	AttrValue(const AttrPlugin &attrValue) {
 		type = ValueTypePlugin;
 		valPlugin = attrValue;
 	}
 
-	AttrValue(const AttrPlugin attrValue, const std::string &output) {
+	AttrValue(const AttrPlugin &attrValue, const std::string &output) {
 		type = ValueTypePlugin;
 		valPlugin = attrValue;
 		valPlugin.output = output;
