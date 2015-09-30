@@ -104,15 +104,21 @@ struct AttrImage {
 	}
 
 	enum ImageType {
-		NONE, RGBA_REAL, JPG
+		NONE = 0,
+		RGBA_REAL,
+		JPG
 	};
 
-	AttrImage(): width(0), height(0), imageType(NONE), data(nullptr), size(0) {
+	AttrImage()
+	    : data(nullptr)
+	    , size(0)
+	    , width(0)
+	    , height(0)
+	    , imageType(NONE)
+	{}
 
-	}
-
-	AttrImage(const void * data, int size, AttrImage::ImageType type, int width, int height):
-		data(nullptr)
+	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height)
+	    : data(nullptr)
 	{
 		set(data, size, type, width, height);
 	}
@@ -127,8 +133,14 @@ struct AttrImage {
 	}
 
 	std::unique_ptr<char[]> data;
-	int size, width, height;
+	int size;
+	int width;
+	int height;
 	ImageType imageType;
+
+private:
+	AttrImage(const AttrImage&) = delete;
+	AttrImage& operator=(const AttrImage&) = delete;
 };
 
 
