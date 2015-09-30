@@ -6,7 +6,6 @@
 #include "serializer.hpp"
 #include "deserializer.hpp"
 
-
 // Compile time max(sizeof(A), sizeof(B))
 template <size_t A, size_t B>
 struct compile_time_max {
@@ -26,84 +25,125 @@ struct max_type_sizeof<T, Q> {
 	enum { value = compile_time_max<sizeof(T), sizeof(Q)>::value };
 };
 
-
 // maximum possible size of a value in the message
 const int MAX_MESSAGE_SIZE = max_type_sizeof<VRayBaseTypes::AttrColor,
-											VRayBaseTypes::AttrAColor,
-											VRayBaseTypes::AttrVector,
-											VRayBaseTypes::AttrVector2,
-											VRayBaseTypes::AttrMatrix,
-											VRayBaseTypes::AttrTransform,
-											VRayBaseTypes::AttrPlugin,
-											VRayBaseTypes::AttrListInt,
-											VRayBaseTypes::AttrListFloat,
-											VRayBaseTypes::AttrListColor,
-											VRayBaseTypes::AttrListVector,
-											VRayBaseTypes::AttrListVector2,
-											VRayBaseTypes::AttrListPlugin,
-											VRayBaseTypes::AttrListString,
-											VRayBaseTypes::AttrMapChannels,
-											VRayBaseTypes::AttrInstancer,
-											VRayBaseTypes::AttrImage,
-											VRayBaseTypes::AttrSimpleType<int>,
-											VRayBaseTypes::AttrSimpleType<float>,
-											VRayBaseTypes::AttrSimpleType<double>,
-											VRayBaseTypes::AttrSimpleType<std::string>>::value;
-
+VRayBaseTypes::AttrAColor,
+VRayBaseTypes::AttrVector,
+VRayBaseTypes::AttrVector2,
+VRayBaseTypes::AttrMatrix,
+VRayBaseTypes::AttrTransform,
+VRayBaseTypes::AttrPlugin,
+VRayBaseTypes::AttrListInt,
+VRayBaseTypes::AttrListFloat,
+VRayBaseTypes::AttrListColor,
+VRayBaseTypes::AttrListVector,
+VRayBaseTypes::AttrListVector2,
+VRayBaseTypes::AttrListPlugin,
+VRayBaseTypes::AttrListString,
+VRayBaseTypes::AttrMapChannels,
+VRayBaseTypes::AttrInstancer,
+VRayBaseTypes::AttrImage,
+VRayBaseTypes::AttrSimpleType<int>,
+VRayBaseTypes::AttrSimpleType<float>,
+VRayBaseTypes::AttrSimpleType<double>,
+VRayBaseTypes::AttrSimpleType<std::string>>::value;
 
 
 class VRayMessage {
 public:
-	enum class Type : int { None, SingleValue, ChangePlugin, ChangeRenderer };
-	enum class PluginAction { None, Create, Remove, Update };
-	enum class RendererAction { None, Init, Free, Start, Stop, Pause, Resume, Resize,
+	enum class Type : int {
+		None,
+		SingleValue,
+		ChangePlugin,
+		ChangeRenderer
+	};
+
+	enum class PluginAction {
+		None,
+		Create,
+		Remove,
+		Update
+	};
+
+	enum class RendererAction {
+		None,
+		Init,
+		Free,
+		Start,
+		Stop,
+		Pause,
+		Resume,
+		Resize,
 		_ArgumentRenderAction,
-		AddHosts, RemoveHosts, LoadScene, AppendScene, ExportScene, SetRenderMode, SetAnimationProperties,
-        SetCurrentTime, ClearFrameValues, SetRendererStatus, SetRendererType };
+		AddHosts,
+		RemoveHosts,
+		LoadScene,
+		AppendScene,
+		ExportScene,
+		SetRenderMode,
+		SetAnimationProperties,
+		SetCurrentTime,
+		ClearFrameValues,
+		SetRendererStatus,
+		SetRendererType
+	};
 
-	enum class ValueSetter { None, Default, AsString };
-	enum class RendererType { None, RT, Animation };
-	enum class RendererStatus { None, Abort, Continue };
+	enum class ValueSetter {
+		None,
+		Default,
+		AsString
+	};
 
+	enum class RendererType {
+		None,
+		RT,
+		Animation
+	};
+
+	enum class RendererStatus {
+		None,
+		Abort,
+		Continue
+	};
 
 	VRayMessage(zmq::message_t &message)
-		: message(0)
-		, type(Type::None)
-		, rendererAction(RendererAction::None)
-		, rendererType(RendererType::None)
-		, rendererStatus(RendererStatus::None)
-		, valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
-		, valueSetter(ValueSetter::None)
-		, pluginAction(PluginAction::None)
+	    : message(0)
+	    , type(Type::None)
+	    , rendererAction(RendererAction::None)
+	    , rendererType(RendererType::None)
+	    , rendererStatus(RendererStatus::None)
+	    , valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
+	    , valueSetter(ValueSetter::None)
+	    , pluginAction(PluginAction::None)
 	{
 		this->message.move(&message);
 		this->parse();
 	}
 
 	VRayMessage(VRayMessage && other)
-		: message(0)
-		, type(other.type)
-		, rendererAction(other.rendererAction)
-		, rendererType(other.rendererType)
-		, rendererStatus(other.rendererStatus)
-		, valueType(other.valueType)
-		, valueSetter(ValueSetter::None)
-		, pluginAction(other.pluginAction)
-		, pluginName(std::move(other.pluginName))
-		, pluginProperty(std::move(other.pluginProperty))
+	    : message(0)
+	    , type(other.type)
+	    , rendererAction(other.rendererAction)
+	    , rendererType(other.rendererType)
+	    , rendererStatus(other.rendererStatus)
+	    , valueType(other.valueType)
+	    , valueSetter(ValueSetter::None)
+	    , pluginAction(other.pluginAction)
+	    , pluginName(std::move(other.pluginName))
+	    , pluginProperty(std::move(other.pluginProperty))
 	{
 		this->message.move(&other.message);
 	}
 
 	VRayMessage(int size)
-		: message(size)
-		, type(Type::None)
-		, rendererAction(RendererAction::None)
-		, rendererType(RendererType::None)
-		, rendererStatus(RendererStatus::None)
-		, valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
-		, valueSetter(ValueSetter::None)
-		, pluginAction(PluginAction::None)
+	    : message(size)
+	    , type(Type::None)
+	    , rendererAction(RendererAction::None)
+	    , rendererType(RendererType::None)
+	    , rendererStatus(RendererStatus::None)
+	    , valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
+	    , valueSetter(ValueSetter::None)
+	    , pluginAction(PluginAction::None)
 	{}
 
 	zmq::message_t & getMessage() {
@@ -243,60 +283,60 @@ public:
 		using namespace VRayBaseTypes;
 
 		switch (valueType) {
-		case ValueType::ValueTypeColor:
-			getValue<AttrColor>()->~AttrColor();
-			break;
-		case ValueType::ValueTypeAColor:
-			getValue<AttrAColor>()->~AttrAColor();
-			break;
-		case ValueType::ValueTypeVector:
-			getValue<AttrVector>()->~AttrVector();
-			break;
-		case ValueType::ValueTypeVector2:
-			getValue<AttrVector2>()->~AttrVector2();
-			break;
-		case ValueType::ValueTypeMatrix:
-			getValue<AttrMatrix>()->~AttrMatrix();
-			break;
-		case ValueType::ValueTypeTransform:
-			getValue<AttrTransform>()->~AttrTransform();
-			break;
-		case ValueType::ValueTypePlugin:
-			getValue<AttrPlugin>()->~AttrPlugin();
-			break;
-		case ValueType::ValueTypeListInt:
-			getValue<AttrListInt>()->~AttrListInt();
-			break;
-		case ValueType::ValueTypeListFloat:
-			getValue<AttrListFloat>()->~AttrListFloat();
-			break;
-		case ValueType::ValueTypeListColor:
-			getValue<AttrListColor>()->~AttrListColor();
-			break;
-		case ValueType::ValueTypeListVector:
-			getValue<AttrListVector>()->~AttrListVector();
-			break;
-		case ValueType::ValueTypeListVector2:
-			getValue<AttrListVector2>()->~AttrListVector2();
-			break;
-		case ValueType::ValueTypeListPlugin:
-			getValue<AttrListPlugin>()->~AttrListPlugin();
-			break;
-		case ValueType::ValueTypeListString:
-			getValue<AttrListString>()->~AttrListString();
-			break;
-		case ValueType::ValueTypeMapChannels:
-			getValue<AttrMapChannels>()->~AttrMapChannels();
-			break;
-		case ValueType::ValueTypeInstancer:
-			getValue<AttrInstancer>()->~AttrInstancer();
-			break;
-		case ValueType::ValueTypeImage:
-			getValue<AttrImage>()->~AttrImage();
-			break;
-		case ValueType::ValueTypeString:
-			getValue<AttrSimpleType<std::string>>()->~AttrSimpleType();
-			break;
+			case ValueType::ValueTypeColor:
+				getValue<AttrColor>()->~AttrColor();
+				break;
+			case ValueType::ValueTypeAColor:
+				getValue<AttrAColor>()->~AttrAColor();
+				break;
+			case ValueType::ValueTypeVector:
+				getValue<AttrVector>()->~AttrVector();
+				break;
+			case ValueType::ValueTypeVector2:
+				getValue<AttrVector2>()->~AttrVector2();
+				break;
+			case ValueType::ValueTypeMatrix:
+				getValue<AttrMatrix>()->~AttrMatrix();
+				break;
+			case ValueType::ValueTypeTransform:
+				getValue<AttrTransform>()->~AttrTransform();
+				break;
+			case ValueType::ValueTypePlugin:
+				getValue<AttrPlugin>()->~AttrPlugin();
+				break;
+			case ValueType::ValueTypeListInt:
+				getValue<AttrListInt>()->~AttrListInt();
+				break;
+			case ValueType::ValueTypeListFloat:
+				getValue<AttrListFloat>()->~AttrListFloat();
+				break;
+			case ValueType::ValueTypeListColor:
+				getValue<AttrListColor>()->~AttrListColor();
+				break;
+			case ValueType::ValueTypeListVector:
+				getValue<AttrListVector>()->~AttrListVector();
+				break;
+			case ValueType::ValueTypeListVector2:
+				getValue<AttrListVector2>()->~AttrListVector2();
+				break;
+			case ValueType::ValueTypeListPlugin:
+				getValue<AttrListPlugin>()->~AttrListPlugin();
+				break;
+			case ValueType::ValueTypeListString:
+				getValue<AttrListString>()->~AttrListString();
+				break;
+			case ValueType::ValueTypeMapChannels:
+				getValue<AttrMapChannels>()->~AttrMapChannels();
+				break;
+			case ValueType::ValueTypeInstancer:
+				getValue<AttrInstancer>()->~AttrInstancer();
+				break;
+			case ValueType::ValueTypeImage:
+				getValue<AttrImage>()->~AttrImage();
+				break;
+			case ValueType::ValueTypeString:
+				getValue<AttrSimpleType<std::string>>()->~AttrSimpleType();
+				break;
 		}
 
 		memset(value_data, 0, MAX_MESSAGE_SIZE);
@@ -321,71 +361,71 @@ private:
 
 		stream >> valueType;
 		switch (valueType) {
-		case ValueType::ValueTypeColor:
-			stream >> *setValue<AttrColor>();
-			break;
-		case ValueType::ValueTypeAColor:
-			stream >> *setValue<AttrAColor>();
-			break;
-		case ValueType::ValueTypeVector:
-			stream >> *setValue<AttrVector>();
-			break;
-		case ValueType::ValueTypeVector2:
-			stream >> *setValue<AttrVector2>();
-			break;
-		case ValueType::ValueTypeMatrix:
-			stream >> *setValue<AttrMatrix>();
-			break;
-		case ValueType::ValueTypeTransform:
-			stream >> *setValue<AttrTransform>();
-			break;
-		case ValueType::ValueTypePlugin:
-			stream >> *setValue<AttrPlugin>();
-			break;
-		case ValueType::ValueTypeListInt:
-			stream >> *setValue<AttrListInt>();
-			break;
-		case ValueType::ValueTypeListFloat:
-			stream >> *setValue<AttrListFloat>();
-			break;
-		case ValueType::ValueTypeListColor:
-			stream >> *setValue<AttrListColor>();
-			break;
-		case ValueType::ValueTypeListVector:
-			stream >> *setValue<AttrListVector>();
-			break;
-		case ValueType::ValueTypeListVector2:
-			stream >> *setValue<AttrListVector2>();
-			break;
-		case ValueType::ValueTypeListPlugin:
-			stream >> *setValue<AttrListPlugin>();
-			break;
-		case ValueType::ValueTypeListString:
-			stream >> *setValue<AttrListString>();
-			break;
-		case ValueType::ValueTypeMapChannels:
-			stream >> *setValue<AttrMapChannels>();
-			break;
-		case ValueType::ValueTypeInstancer:
-			stream >> *setValue<AttrInstancer>();
-			break;
-		case ValueType::ValueTypeImage:
-			stream >> *setValue<AttrImage>();
-			break;
-		case ValueType::ValueTypeInt:
-			stream >> *setValue<AttrSimpleType<int>>();
-			break;
-		case ValueType::ValueTypeFloat:
-			stream >> *setValue<AttrSimpleType<float>>();
-			break;
-		case ValueType::ValueTypeDouble:
-			stream >> *setValue<AttrSimpleType<double>>();
-			break;
-		case ValueType::ValueTypeString:
-			stream >> *setValue<AttrSimpleType<std::string>>();
-			break;
-		default:
-			assert(false && "Failed to parse value!\n");
+			case ValueType::ValueTypeColor:
+				stream >> *setValue<AttrColor>();
+				break;
+			case ValueType::ValueTypeAColor:
+				stream >> *setValue<AttrAColor>();
+				break;
+			case ValueType::ValueTypeVector:
+				stream >> *setValue<AttrVector>();
+				break;
+			case ValueType::ValueTypeVector2:
+				stream >> *setValue<AttrVector2>();
+				break;
+			case ValueType::ValueTypeMatrix:
+				stream >> *setValue<AttrMatrix>();
+				break;
+			case ValueType::ValueTypeTransform:
+				stream >> *setValue<AttrTransform>();
+				break;
+			case ValueType::ValueTypePlugin:
+				stream >> *setValue<AttrPlugin>();
+				break;
+			case ValueType::ValueTypeListInt:
+				stream >> *setValue<AttrListInt>();
+				break;
+			case ValueType::ValueTypeListFloat:
+				stream >> *setValue<AttrListFloat>();
+				break;
+			case ValueType::ValueTypeListColor:
+				stream >> *setValue<AttrListColor>();
+				break;
+			case ValueType::ValueTypeListVector:
+				stream >> *setValue<AttrListVector>();
+				break;
+			case ValueType::ValueTypeListVector2:
+				stream >> *setValue<AttrListVector2>();
+				break;
+			case ValueType::ValueTypeListPlugin:
+				stream >> *setValue<AttrListPlugin>();
+				break;
+			case ValueType::ValueTypeListString:
+				stream >> *setValue<AttrListString>();
+				break;
+			case ValueType::ValueTypeMapChannels:
+				stream >> *setValue<AttrMapChannels>();
+				break;
+			case ValueType::ValueTypeInstancer:
+				stream >> *setValue<AttrInstancer>();
+				break;
+			case ValueType::ValueTypeImage:
+				stream >> *setValue<AttrImage>();
+				break;
+			case ValueType::ValueTypeInt:
+				stream >> *setValue<AttrSimpleType<int>>();
+				break;
+			case ValueType::ValueTypeFloat:
+				stream >> *setValue<AttrSimpleType<float>>();
+				break;
+			case ValueType::ValueTypeDouble:
+				stream >> *setValue<AttrSimpleType<double>>();
+				break;
+			case ValueType::ValueTypeString:
+				stream >> *setValue<AttrSimpleType<std::string>>();
+				break;
+			default:
+				assert(false && "Failed to parse value!\n");
 		}
 	}
 
