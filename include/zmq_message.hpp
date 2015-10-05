@@ -75,6 +75,7 @@ public:
 		Pause,
 		Resume,
 		Resize,
+		Commit,
 		_ArgumentRenderAction,
 		AddHosts,
 		RemoveHosts,
