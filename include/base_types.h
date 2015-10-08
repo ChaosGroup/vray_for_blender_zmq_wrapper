@@ -19,10 +19,8 @@
 #ifndef VRAY_FOR_BLENDER_BASE_TYPES_H
 #define VRAY_FOR_BLENDER_BASE_TYPES_H
 
-
 #include <vector>
-
-#include <string.h>
+#include <string>
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -31,6 +29,70 @@ namespace VRayBaseTypes {
 
 const int VectorBytesCount  = 3 * sizeof(float);
 const int Vector2BytesCount = 2 * sizeof(float);
+
+// Values must match VRay::RendererOptions::RenderMode
+enum RenderMode {
+	RenderModeProduction  = -1,
+	RenderModeRtCpu       =  0,
+	RenderModeRtGpuOpenCL =  1,
+	RenderModeRtGpuCUDA   =  4,
+	RenderModeRtGpu       =  RenderModeRtGpuCUDA
+};
+
+// Values must match VRay::RenderElement::Type
+enum RenderChannelType {
+	RenderChannelTypeNone = -1,
+	RenderChannelTypeFragColor = 1,
+	RenderChannelTypeFragTransp,
+	RenderChannelTypeFragRealtransp,
+	RenderChannelTypeFragBackground,
+	RenderChannelTypeFragZbuf,
+	RenderChannelTypeFragRenderid,
+	RenderChannelTypeFragNormal,
+	RenderChannelTypeFragAlphatransp,
+	RenderChannelTypeFragExtraaa,
+	RenderChannelTypeFragWeight,
+	RenderChannelTypeFragLast,
+	RenderChannelTypeVfbAtmosphere = 100,
+	RenderChannelTypeVfbDiffuse,
+	RenderChannelTypeVfbReflect,
+	RenderChannelTypeVfbRefract,
+	RenderChannelTypeVfbSelfillum,
+	RenderChannelTypeVfbShadow,
+	RenderChannelTypeVfbSpecular,
+	RenderChannelTypeVfbLighting,
+	RenderChannelTypeVfbGi,
+	RenderChannelTypeVfbCaustics,
+	RenderChannelTypeVfbRawgi,
+	RenderChannelTypeVfbRawlight,
+	RenderChannelTypeVfbRawshadow,
+	RenderChannelTypeVfbVelocity,
+	RenderChannelTypeVfbRenderID,
+	RenderChannelTypeVfbMtlid,
+	RenderChannelTypeVfbNodeid,
+	RenderChannelTypeVfbZdepth,
+	RenderChannelTypeVfbReflectionFilter,
+	RenderChannelTypeVfbRawReflection,
+	RenderChannelTypeVfbRefractionFilter,
+	RenderChannelTypeVfbRawRefraction,
+	RenderChannelTypeVfbRealcolor,
+	RenderChannelTypeVfbNormal,
+	RenderChannelTypeVfbBackground,
+	RenderChannelTypeVfbAlpha,
+	RenderChannelTypeVfbColor,
+	RenderChannelTypeVfbWirecolor,
+	RenderChannelTypeVfbMatteshadow,
+	RenderChannelTypeVfbTotallight,
+	RenderChannelTypeVfbRawtotallight,
+	RenderChannelTypeVfbBumpnormal,
+	RenderChannelTypeVfbSamplerate,
+	RenderChannelTypeVfbSss2,
+	RenderChannelTypeDrbucket,
+	RenderChannelTypeVfbVrmtlreflectgloss,
+	RenderChannelTypeVfbVrmtlreflecthigloss,
+	RenderChannelTypeVfbVrmtlrefractgloss,
+	RenderChannelTypeVfbShademapExport,
+};
 
 
 enum ValueType {
