@@ -124,6 +124,27 @@ ZmqWrapper::ZmqWrapper()
 			assert(false && "Zmq exception!");
 		}
 
+		if (this->flushOnExit) {
+			try {
+				int wait = 200;
+				this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
+				std::lock_guard<std::mutex> lock(this->messageMutex);
+
+				while (!this->messageQue.empty()) {
+					auto & msg = this->messageQue.front().getMessage();
+
+					if (!this->frontend->send(emptyFrame, ZMQ_SNDMORE)) {
+						break;
+					}
+
+					this->frontend->send(msg);
+					this->messageQue.pop();
+				}
+			} catch (zmq::error_t &e) {
+				puts(e.what());
+			}
+		}
+
 		this->frontend->close();
 		this->isWorking = false;
 	});
