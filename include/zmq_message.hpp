@@ -246,6 +246,12 @@ public:
 		return fromStream(strm);
 	}
 
+	static VRayMessage createMessage(const VRayBaseTypes::AttrImage & value) {
+		SerializerStream strm;
+		strm << VRayMessage::Type::Image << value.getType() << value;
+		return fromStream(strm);
+	}
+
 	/// Create message to control renderer
 	static VRayMessage createMessage(const RendererAction & action) {
 		assert(action < RendererAction::_ArgumentRenderAction && "Renderer action provided requires argument!");
