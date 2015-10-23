@@ -120,7 +120,7 @@ inline SerializerStream & operator<<(SerializerStream & stream, const VRayBaseTy
 
 template <>
 inline SerializerStream & operator<<(SerializerStream & stream, const VRayBaseTypes::AttrImage & image) {
-	stream << image.imageType << image.size << image.width << image.height;
+	stream << image.imageType << image.channelType << image.size << image.width << image.height;
 	stream.write(image.data.get(), image.size);
 	return stream;
 }

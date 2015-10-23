@@ -158,11 +158,9 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrImage & image) {
-	int size, width, height;
-	VRayBaseTypes::AttrImage::ImageType type;
-	stream >> type >> size >> width >> height;
-	image.set(stream.getCurrent(), size, type, width, height);
-	stream.forward(size);
+	stream >> image.imageType >> image.channelType >> image.size >> image.width >> image.height;
+	image.set(stream.getCurrent(), image.size, image.imageType, image.width, image.height);
+	stream.forward(image.size);
 	return stream;
 }
 

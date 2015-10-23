@@ -246,14 +246,6 @@ public:
 		return fromStream(strm);
 	}
 
-	template <typename T>
-	static VRayMessage createMessage(const T &imageType, const VRayBaseTypes::AttrImage &img) {
-		SerializerStream strm;
-		VRayBaseTypes::AttrSimpleType<T> typeWrapper(imageType);
-		strm << VRayMessage::Type::Image << typeWrapper.getType() << typeWrapper << img.getType() << img;
-		return fromStream(strm);
-	}
-
 	/// Create message to control renderer
 	static VRayMessage createMessage(const RendererAction & action) {
 		assert(action < RendererAction::_ArgumentRenderAction && "Renderer action provided requires argument!");

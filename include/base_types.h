@@ -177,10 +177,12 @@ struct AttrImage {
 	    , width(0)
 	    , height(0)
 	    , imageType(NONE)
+		, channelType(RenderChannelTypeNone)
 	{}
 
-	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height)
+	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height, RenderChannelType channelType = RenderChannelTypeNone)
 	    : data(nullptr)
+		, channelType(channelType)
 	{
 		set(data, size, type, width, height);
 	}
@@ -199,6 +201,7 @@ struct AttrImage {
 	int width;
 	int height;
 	ImageType imageType;
+	RenderChannelType channelType;
 
 private:
 	AttrImage(const AttrImage&) = delete;
