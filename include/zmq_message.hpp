@@ -55,6 +55,7 @@ public:
 	enum class Type : int {
 		None,
 		SingleValue,
+		Image,
 		ChangePlugin,
 		ChangeRenderer
 	};
@@ -76,6 +77,7 @@ public:
 		Resume,
 		Resize,
 		Commit,
+		SetOnBucketReady,
 		_ArgumentRenderAction,
 		AddHosts,
 		RemoveHosts,
@@ -87,7 +89,8 @@ public:
 		SetCurrentTime,
 		ClearFrameValues,
 		SetRendererStatus,
-		SetRendererType
+		SetRendererType,
+		GetImage
 	};
 
 	enum class ValueSetter {
@@ -240,6 +243,14 @@ public:
 	static VRayMessage createMessage(const T & value) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::SingleValue << value.getType() << value;
+		return fromStream(strm);
+	}
+
+	template <typename T>
+	static VRayMessage createMessage(const T &imageType, const VRayBaseTypes::AttrImage &img) {
+		SerializerStream strm;
+		VRayBaseTypes::AttrSimpleType<T> typeWrapper(imageType);
+		strm << VRayMessage::Type::Image << typeWrapper.getType() << typeWrapper << img.getType() << img;
 		return fromStream(strm);
 	}
 
