@@ -185,6 +185,17 @@ struct AttrImage {
 		, imageType(other.imageType)
 	{}
 
+	AttrImage &operator=(AttrImage &&other) {
+		if (this != &other) {
+			std::swap(data, other.data);
+			std::swap(size, other.size);
+			std::swap(width, other.width);
+			std::swap(height, other.height);
+			std::swap(imageType, other.imageType);
+		}
+		return *this;
+	}
+
 	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height)
 	    : data(nullptr)
 	{
