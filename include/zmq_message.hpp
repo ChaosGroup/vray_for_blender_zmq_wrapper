@@ -246,7 +246,7 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(const VRayBaseTypes::AttrImage & value) {
+	static VRayMessage createMessage(const VRayBaseTypes::AttrImageSet & value) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::Image << value.getType() << value;
 		return fromStream(strm);

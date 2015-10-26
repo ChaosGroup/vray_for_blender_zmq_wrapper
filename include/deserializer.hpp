@@ -158,13 +158,24 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrImage & image) {
-	stream >> image.imageType >> image.channelType >> image.size >> image.width >> image.height;
+	stream >> image.imageType >> image.size >> image.width >> image.height;
 	image.set(stream.getCurrent(), image.size, image.imageType, image.width, image.height);
 	stream.forward(image.size);
 	return stream;
 }
 
-
+template <>
+inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrImageSet & set) {
+	int count;
+	stream >> count;
+	VRayBaseTypes::AttrImage img;
+	VRayBaseTypes::RenderChannelType type;
+	for (int c = 0; c < count; c++) {
+		stream >> type >> img;
+		set.images.emplace(type, std::move(img));
+	}
+	return stream;
+}
 
 
 #endif // _DESERIALIZER_HPP_

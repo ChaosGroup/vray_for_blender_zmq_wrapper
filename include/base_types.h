@@ -161,10 +161,6 @@ inline ValueType AttrSimpleType<std::string>::getType() const {
 }
 
 struct AttrImage {
-	ValueType getType() const {
-		return ValueType::ValueTypeImage;
-	}
-
 	enum ImageType {
 		NONE = 0,
 		RGBA_REAL,
@@ -177,12 +173,18 @@ struct AttrImage {
 	    , width(0)
 	    , height(0)
 	    , imageType(NONE)
-		, channelType(RenderChannelTypeNone)
 	{}
 
-	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height, RenderChannelType channelType = RenderChannelTypeNone)
+	AttrImage(AttrImage &&other)
+		: data(std::move(other.data))
+		, size(other.size)
+		, width(other.width)
+		, height(other.height)
+		, imageType(other.imageType)
+	{}
+
+	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height)
 	    : data(nullptr)
-		, channelType(channelType)
 	{
 		set(data, size, type, width, height);
 	}
@@ -201,11 +203,26 @@ struct AttrImage {
 	int width;
 	int height;
 	ImageType imageType;
-	RenderChannelType channelType;
 
 private:
 	AttrImage(const AttrImage&) = delete;
 	AttrImage& operator=(const AttrImage&) = delete;
+};
+
+struct AttrImageSet {
+	ValueType getType() const {
+		return ValueType::ValueTypeImage;
+	}
+
+	AttrImageSet() {}
+	AttrImageSet(AttrImageSet &&other)
+		: images(std::move(other.images))
+	{}
+
+	boost::unordered_map<RenderChannelType, AttrImage> images;
+private:
+	AttrImageSet(const AttrImageSet&) = delete;
+	AttrImageSet& operator=(const AttrImageSet&) = delete;
 };
 
 
