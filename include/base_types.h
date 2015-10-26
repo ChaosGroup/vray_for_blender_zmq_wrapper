@@ -164,6 +164,8 @@ struct AttrImage {
 	enum ImageType {
 		NONE = 0,
 		RGBA_REAL,
+		RGB_REAL,
+		BW_REAL,
 		JPG
 	};
 
