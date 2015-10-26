@@ -343,7 +343,7 @@ public:
 				getValue<AttrInstancer>()->~AttrInstancer();
 				break;
 			case ValueType::ValueTypeImage:
-				getValue<AttrImage>()->~AttrImage();
+				getValue<AttrImageSet>()->~AttrImageSet();
 				break;
 			case ValueType::ValueTypeString:
 				getValue<AttrSimpleType<std::string>>()->~AttrSimpleType();
@@ -421,7 +421,7 @@ private:
 				stream >> *setValue<AttrInstancer>();
 				break;
 			case ValueType::ValueTypeImage:
-				stream >> *setValue<AttrImage>();
+				stream >> *setValue<AttrImageSet>();
 				break;
 			case ValueType::ValueTypeInt:
 				stream >> *setValue<AttrSimpleType<int>>();
@@ -458,7 +458,7 @@ private:
 				}
 			}
 		}
-		else if (type == Type::SingleValue) {
+		else if (type == Type::SingleValue || type == Type::Image) {
 			readValue(stream);
 		}
 		else if (type == Type::ChangeRenderer) {
