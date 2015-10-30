@@ -175,6 +175,8 @@ struct AttrImage {
 	    , width(0)
 	    , height(0)
 	    , imageType(NONE)
+		, x(-1)
+		, y(-1)
 	{}
 
 	AttrImage(AttrImage &&other)
@@ -183,6 +185,8 @@ struct AttrImage {
 		, width(other.width)
 		, height(other.height)
 		, imageType(other.imageType)
+		, x(other.x)
+		, y(other.y)
 	{}
 
 	AttrImage &operator=(AttrImage &&other) {
@@ -192,20 +196,29 @@ struct AttrImage {
 			std::swap(width, other.width);
 			std::swap(height, other.height);
 			std::swap(imageType, other.imageType);
+			std::swap(x, other.x);
+			std::swap(y, other.y);
 		}
 		return *this;
 	}
 
-	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height)
+	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height, int x = -1, int y = -1)
 	    : data(nullptr)
+		, size(size)
+		, width(width)
+		, height(height)
+		, x(x)
+		, y(y)
+		, imageType(type)
 	{
-		set(data, size, type, width, height);
+		set(data, size);
 	}
 
-	void set(const void * data, int size, AttrImage::ImageType type, int width, int height) {
-		this->width = width;
-		this->height = height;
-		this->imageType = type;
+	bool isBucket() const {
+		return x != -1 && y != -1;
+	}
+
+	void set(const void * data, int size) {
 		this->data.reset(new char[size]);
 		this->size = size;
 		::memcpy(this->data.get(), data, size);
@@ -215,6 +228,8 @@ struct AttrImage {
 	int size;
 	int width;
 	int height;
+	int x;
+	int y;
 	ImageType imageType;
 
 private:
