@@ -238,6 +238,7 @@ private:
 };
 
 enum ImageSourceType {
+	ImageSourceInvalid,
 	RtImageUpdate,
 	ImageReady,
 	BucketImageReady,
@@ -248,7 +249,7 @@ struct AttrImageSet {
 		return ValueType::ValueTypeImage;
 	}
 
-	AttrImageSet(ImageSourceType sourceType): sourceType(sourceType) {}
+	AttrImageSet(ImageSourceType sourceType = ImageSourceInvalid): sourceType(sourceType) {}
 	AttrImageSet(AttrImageSet &&other)
 		: images(std::move(other.images))
 	{}
