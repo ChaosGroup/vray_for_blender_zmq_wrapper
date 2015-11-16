@@ -237,17 +237,24 @@ private:
 	AttrImage& operator=(const AttrImage&) = delete;
 };
 
+enum ImageSourceType {
+	RtImageUpdate,
+	ImageReady,
+	BucketImageReady,
+};
+
 struct AttrImageSet {
 	ValueType getType() const {
 		return ValueType::ValueTypeImage;
 	}
 
-	AttrImageSet() {}
+	AttrImageSet(ImageSourceType sourceType): sourceType(sourceType) {}
 	AttrImageSet(AttrImageSet &&other)
 		: images(std::move(other.images))
 	{}
 
 	boost::unordered_map<RenderChannelType, AttrImage> images;
+	ImageSourceType sourceType;
 private:
 	AttrImageSet(const AttrImageSet&) = delete;
 	AttrImageSet& operator=(const AttrImageSet&) = delete;

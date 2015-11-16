@@ -127,7 +127,7 @@ inline SerializerStream & operator<<(SerializerStream & stream, const VRayBaseTy
 
 template <>
 inline SerializerStream & operator<<(SerializerStream & stream, const VRayBaseTypes::AttrImageSet & set) {
-	stream << static_cast<int>(set.images.size());
+	stream << set.sourceType << static_cast<int>(set.images.size());
 	for (const auto &img : set.images) {
 		stream << img.first << img.second;
 	}

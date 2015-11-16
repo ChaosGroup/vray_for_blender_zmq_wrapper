@@ -167,7 +167,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrImageSet & set) {
 	int count;
-	stream >> count;
+	stream >> set.sourceType >> count;
 	VRayBaseTypes::AttrImage img;
 	VRayBaseTypes::RenderChannelType type;
 	for (int c = 0; c < count; c++) {
