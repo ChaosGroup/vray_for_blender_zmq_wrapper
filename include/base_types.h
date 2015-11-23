@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <string>
+#include <cstring>
 #include <boost/shared_ptr.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -254,7 +255,7 @@ struct AttrImageSet {
 		: images(std::move(other.images))
 	{}
 
-	boost::unordered_map<RenderChannelType, AttrImage> images;
+	boost::unordered_map<RenderChannelType, AttrImage, boost::hash<int>> images;
 	ImageSourceType sourceType;
 private:
 	AttrImageSet(const AttrImageSet&) = delete;
