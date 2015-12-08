@@ -34,10 +34,9 @@ if(WIN32)
 endif()
 
 if(BOOST_ROOT)
-	find_package(Boost PATHS ${BOOST_ROOT})
-else()
-	find_package(Boost)
+	find_package(Boost PATHS ${BOOST_ROOT} NO_DEFAULT_PATH)
 endif()
+find_package(Boost)
 include_directories(${Boost_INCLUDE_DIR})
 
 include_directories(${ZMQ_ROOT}/include)
