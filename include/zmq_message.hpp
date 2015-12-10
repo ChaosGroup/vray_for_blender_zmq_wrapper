@@ -191,7 +191,7 @@ public:
 		return rendererStatus;
 	}
 
-	void getRendererSize(int & width, int & height) {
+	void getRendererSize(int & width, int & height) const {
 		width = this->rendererWidth;
 		height = this->rendererHeight;
 	}
