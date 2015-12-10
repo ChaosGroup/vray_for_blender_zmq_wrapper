@@ -54,3 +54,4 @@ file(GLOB HEADERS "include/*.hpp" "include/*.h")
 include_directories(include)
 
 add_library(${PROJECT_NAME} STATIC "${SOURCES};${HEADERS}")
+
