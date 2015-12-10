@@ -40,6 +40,7 @@ find_package(Boost)
 include_directories(${Boost_INCLUDE_DIR})
 
 include_directories(${ZMQ_ROOT}/include)
+link_directories(${ZMQ_ROOT}/lib)
 include_directories(extern/cppzmq)
 
 if(WIN32)
