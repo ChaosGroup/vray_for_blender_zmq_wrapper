@@ -38,8 +38,7 @@ if(BOOST_ROOT)
 endif()
 include_directories(${Boost_INCLUDE_DIR})
 
-include_directories(${ZMQ_ROOT}/include)
-link_directories(${ZMQ_ROOT}/lib)
+include_directories(${LIBS_ROOT}/${CMAKE_SYSTEM_NAME}/zmq/include)
 include_directories(extern/cppzmq)
 
 if(WIN32)
