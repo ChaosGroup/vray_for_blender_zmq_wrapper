@@ -23,6 +23,9 @@ project(vray_zmq_wrapper)
 
 if(WIN32)
 	set(BOOST_ROOT "" CACHE PATH "BOOST library location")
+	if("${BOOST_ROOT}" STREQUAL "")
+		message(SEND_ERROR "You need to set the location of the Boost library")
+	endif()
 endif()
 
 if(BOOST_ROOT)
