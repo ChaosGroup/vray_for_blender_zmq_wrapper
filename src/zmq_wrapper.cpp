@@ -108,7 +108,7 @@ ZmqWrapper::ZmqWrapper()
 #else
 					bool propagateMessage = true;
 #endif
-					if (propagateMessage) {
+					if (propagateMessage && this->callback) {
 						VRayMessage msg(incoming);
 						this->callback(msg, this);
 					}
