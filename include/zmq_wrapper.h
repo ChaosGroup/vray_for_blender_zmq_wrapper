@@ -41,6 +41,8 @@ public:
 	bool good() const;
 	bool connected() const;
 
+	void forceFree();
+
 private:
 	ZmqWrapperCallback_t callback;
 	std::thread worker;
