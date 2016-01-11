@@ -90,7 +90,8 @@ public:
 		ClearFrameValues,
 		SetRendererStatus,
 		SetRendererType,
-		GetImage
+		GetImage,
+		SetQuality
 	};
 
 	enum class ValueSetter {
