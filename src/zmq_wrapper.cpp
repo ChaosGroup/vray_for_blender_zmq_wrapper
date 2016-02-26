@@ -140,12 +140,13 @@ ZmqWrapper::ZmqWrapper()
 					this->frontend->send(msg);
 					this->messageQue.pop();
 				}
+
+				this->frontend->close();
 			} catch (zmq::error_t &e) {
 				puts(e.what());
 			}
 		}
 
-		this->frontend->close();
 		this->isWorking = false;
 	});
 
