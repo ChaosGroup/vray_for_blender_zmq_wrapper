@@ -27,7 +27,7 @@ ZmqWrapper::ZmqWrapper()
 
 			socketInit = true;
 		} catch (zmq::error_t & e) {
-			puts(e.what());
+			printf("ZMQ exception while worker initialization: %s", e.what());
 			this->isWorking = false;
 			return;
 		}
@@ -87,7 +87,7 @@ ZmqWrapper::ZmqWrapper()
 						try {
 							this->frontend->send(msg);
 						} catch (zmq::error_t & e) {
-							puts(e.what());
+							printf("ZMQ exception while zmq send: %s", e.what());
 							assert(false && "Failed to send payload after empty frame && exception");
 						}
 
@@ -120,7 +120,7 @@ ZmqWrapper::ZmqWrapper()
 				}
 			}
 		} catch (zmq::error_t & e) {
-			puts(e.what());
+			printf("ZMQ exception in worker thread: %s", e.what());
 			assert(false && "Zmq exception!");
 		}
 
@@ -143,7 +143,7 @@ ZmqWrapper::ZmqWrapper()
 
 				this->frontend->close();
 			} catch (zmq::error_t &e) {
-				puts(e.what());
+				printf("ZMQ exception while flushing on exit: %s", e.what());
 			}
 		}
 
@@ -219,7 +219,7 @@ void ZmqClient::connect(const char * addr) {
 	try {
 		this->frontend->connect(addr);
 	} catch (zmq::error_t & e) {
-		puts(e.what());
+		printf("ZMQ::connect(%s) exception: %s", addr, e.what());
 		this->errorConnect = false;
 	}
 	this->isInit = true;
