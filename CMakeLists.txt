@@ -20,19 +20,6 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
 project(vray_zmq_wrapper)
 
-
-if(WIN32)
-	set(BOOST_ROOT "" CACHE PATH "BOOST library location")
-	if("${BOOST_ROOT}" STREQUAL "")
-		message(SEND_ERROR "You need to set the location of the Boost library")
-	endif()
-endif()
-
-if(BOOST_ROOT)
-	find_package(Boost)
-endif()
-include_directories(${Boost_INCLUDE_DIR})
-
 include_directories(${LIBS_ROOT}/${CMAKE_SYSTEM_NAME}/zmq/include)
 include_directories(extern/cppzmq)
 

@@ -22,8 +22,8 @@
 #include <vector>
 #include <string>
 #include <cstring>
-#include <boost/shared_ptr.hpp>
-#include <boost/unordered_map.hpp>
+#include <unordered_map>
+#include <memory>
 
 
 namespace VRayBaseTypes {
@@ -255,7 +255,7 @@ struct AttrImageSet {
 		: images(std::move(other.images))
 	{}
 
-	boost::unordered_map<RenderChannelType, AttrImage, boost::hash<int>> images;
+	std::unordered_map<RenderChannelType, AttrImage, std::hash<int>> images;
 	ImageSourceType sourceType;
 private:
 	AttrImageSet(const AttrImageSet&) = delete;
@@ -471,8 +471,8 @@ struct AttrPlugin {
 
 template <typename T>
 struct AttrList {
-	typedef std::vector<T>              DataType;
-	typedef boost::shared_ptr<DataType> DataArray;
+	typedef std::vector<T>            DataType;
+	typedef std::shared_ptr<DataType> DataArray;
 
 	ValueType getType() const ;
 
@@ -594,7 +594,7 @@ struct AttrMapChannels {
 		AttrListInt    faces;
 		std::string    name;
 	};
-	typedef boost::unordered_map<std::string, AttrMapChannel> MapChannelsMap;
+	typedef std::unordered_map<std::string, AttrMapChannel> MapChannelsMap;
 
 	MapChannelsMap data;
 };
