@@ -19,6 +19,7 @@
 #ifndef VRAY_FOR_BLENDER_BASE_TYPES_H
 #define VRAY_FOR_BLENDER_BASE_TYPES_H
 
+#include <cmath>
 #include <vector>
 #include <string>
 #include <cstring>
