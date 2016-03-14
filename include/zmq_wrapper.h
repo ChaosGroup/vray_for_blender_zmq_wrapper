@@ -42,6 +42,7 @@ public:
 	bool connected() const;
 
 	void forceFree();
+	void syncStop();
 
 private:
 	ZmqWrapperCallback_t callback;

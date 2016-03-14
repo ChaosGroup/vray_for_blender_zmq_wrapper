@@ -167,6 +167,14 @@ bool ZmqWrapper::good() const {
 	return this->isWorking;
 }
 
+void ZmqWrapper::syncStop() {
+	this->isWorking = false;
+	this->isInit = true;
+	if (this->worker.joinable()) {
+		this->worker.join();
+	}
+}
+
 void ZmqWrapper::forceFree() {
 	this->isInit = true;
 	this->isWorking = false;
