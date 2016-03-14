@@ -21,7 +21,7 @@ static const uint64_t DISCONNECT_TIMEOUT = 5000;
  */
 class ZmqWrapper {
 public:
-	typedef std::function<void(VRayMessage &, ZmqWrapper *)> ZmqWrapperCallback_t;
+	typedef std::function<void(const VRayMessage &, ZmqWrapper *)> ZmqWrapperCallback_t;
 
 	ZmqWrapper();
 	~ZmqWrapper();
