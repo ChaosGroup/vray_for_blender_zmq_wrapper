@@ -220,7 +220,7 @@ void ZmqClient::connect(const char * addr) {
 		this->frontend->connect(addr);
 	} catch (zmq::error_t & e) {
 		printf("ZMQ::connect(%s) exception: %s", addr, e.what());
-		this->errorConnect = false;
+		this->errorConnect = true;
 	}
 	this->isInit = true;
 }
