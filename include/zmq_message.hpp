@@ -92,7 +92,8 @@ public:
 		SetRendererStatus,
 		SetRendererType,
 		GetImage,
-		SetQuality
+		SetQuality,
+		SetCurrentCamera
 	};
 
 	enum class ValueSetter {
