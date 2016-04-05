@@ -32,6 +32,12 @@ namespace VRayBaseTypes {
 const int VectorBytesCount  = 3 * sizeof(float);
 const int Vector2BytesCount = 2 * sizeof(float);
 
+enum CommitAction {
+	CommitNow,
+	CommitAutoOff,
+	CommitAutoOn
+};
+
 // Values must match VRay::RendererOptions::RenderMode
 enum RenderMode {
 	RenderModeProduction  = -1,
