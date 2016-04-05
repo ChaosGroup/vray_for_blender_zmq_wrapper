@@ -3,8 +3,8 @@
 
 #include "zmq.hpp"
 #include "base_types.h"
-#include "serializer.hpp"
-#include "deserializer.hpp"
+#include "zmq_serializer.hpp"
+#include "zmq_deserializer.hpp"
 
 // Compile time max(sizeof(A), sizeof(B))
 template <size_t A, size_t B>
