@@ -352,6 +352,15 @@ public:
 			case ValueType::ValueTypeString:
 				getValue<AttrSimpleType<std::string>>()->~AttrSimpleType();
 				break;
+			case ValueType::ValueTypeListValue:
+			case ValueType::ValueTypeListTransform:
+			case ValueType::ValueTypeListMatrix:
+			case ValueType::ValueTypeList:
+			case ValueType::ValueTypeDouble:
+			case ValueType::ValueTypeFloat:
+			case ValueType::ValueTypeInt:
+			case ValueType::ValueTypeUnknown:
+				break;
 		}
 
 		memset(value_data, 0, MAX_MESSAGE_SIZE);
