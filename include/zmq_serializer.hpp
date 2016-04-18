@@ -12,6 +12,9 @@ public:
 	}
 
 	void write(const char * data, size_t size) {
+		if (size == 0) {
+			return;
+		}
 		size_t prevSize = stream.size();
 		stream.resize(size + stream.size());
 		memcpy(&stream[prevSize], data, size);
