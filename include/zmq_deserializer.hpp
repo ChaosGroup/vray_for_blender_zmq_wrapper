@@ -7,7 +7,7 @@ class DeserializerStream {
 public:
 	DeserializerStream() = delete;
 
-	DeserializerStream(const char * data, int size)
+	DeserializerStream(const char * data, size_t size)
 	    : first(data)
 	    , current(data)
 	    , last(data + size)
@@ -21,11 +21,11 @@ public:
 		current = first;
 	}
 
-	int getSize() const {
+	size_t getSize() const {
 		return last - first;
 	}
 
-	int getOffset() const {
+	size_t getOffset() const {
 		return last - current;
 	}
 
@@ -41,7 +41,7 @@ public:
 		return current;
 	}
 
-	bool forward(int size) {
+	bool forward(size_t size) {
 		if (current + size > last) {
 			return false;
 		}
@@ -63,7 +63,7 @@ DeserializerStream & operator>>(DeserializerStream & stream, T & value) {
 
 template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, std::string & value) {
-	int size = 0;
+	size_t size = 0;
 	stream >> size;
 
 	// either push back char by char, or do this

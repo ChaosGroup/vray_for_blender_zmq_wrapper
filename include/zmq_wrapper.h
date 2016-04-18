@@ -53,10 +53,10 @@ private:
 	std::mutex messageMutex;
 
 protected:
-	int isWorking;
-	int errorConnect;
-	int isInit;
-	int flushOnExit;
+	bool isWorking;
+	bool errorConnect;
+	bool isInit;
+	bool flushOnExit;
 	std::unique_ptr<zmq::socket_t> frontend;
 };
 

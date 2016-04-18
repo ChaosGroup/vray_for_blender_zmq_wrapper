@@ -11,16 +11,13 @@ public:
 	SerializerStream() {
 	}
 
-	void write(const char * data, int size) {
-		if (!size) {
-			return;
-		}
+	void write(const char * data, size_t size) {
 		size_t prevSize = stream.size();
 		stream.resize(size + stream.size());
 		memcpy(&stream[prevSize], data, size);
 	}
 
-	int getSize() const {
+	size_t getSize() const {
 		return stream.size();
 	}
 
@@ -41,7 +38,7 @@ inline SerializerStream & operator<<(SerializerStream & stream, const T & value)
 
 template <>
 inline SerializerStream & operator<<(SerializerStream & stream, const std::string & value) {
-	int size = value.size();
+	size_t size = value.size();
 	stream << size;
 	stream.write(value.c_str(), size);
 	return stream;

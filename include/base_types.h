@@ -211,7 +211,7 @@ struct AttrImage {
 		return *this;
 	}
 
-	AttrImage(const void *data, int size, AttrImage::ImageType type, int width, int height, int x = -1, int y = -1)
+	AttrImage(const void *data, size_t size, AttrImage::ImageType type, int width, int height, int x = -1, int y = -1)
 	    : data(nullptr)
 		, size(size)
 		, width(width)
@@ -227,14 +227,14 @@ struct AttrImage {
 		return x != -1 && y != -1;
 	}
 
-	void set(const void * data, int size) {
+	void set(const void * data, size_t size) {
 		this->data.reset(new char[size]);
 		this->size = size;
 		::memcpy(this->data.get(), data, size);
 	}
 
 	std::unique_ptr<char[]> data;
-	int size;
+	size_t size;
 	int width;
 	int height;
 	int x;
@@ -510,7 +510,7 @@ struct AttrList {
 	}
 
 	int getCount() const {
-		return m_Ptr.get()->size();
+		return static_cast<int>(m_Ptr.get()->size());
 	}
 
 	// NOTE: Won't work for AttrList<std::string>

@@ -144,7 +144,7 @@ public:
 		this->message.move(&other.message);
 	}
 
-	VRayMessage(int size)
+	VRayMessage(size_t size)
 	    : message(size)
 	    , type(Type::None)
 	    , rendererAction(RendererAction::None)
