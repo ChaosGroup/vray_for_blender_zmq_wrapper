@@ -4,11 +4,13 @@
 #include <string>
 #include <functional>
 #include <thread>
-#include <zmq.hpp>
 #include <memory>
 #include <queue>
 #include <mutex>
 #include <cstdio>
+
+#define NOMINMAX // zmq includes windows.h
+#include <zmq.hpp>
 
 #include "base_types.h"
 #include "zmq_message.hpp"

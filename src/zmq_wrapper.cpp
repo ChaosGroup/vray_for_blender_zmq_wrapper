@@ -3,6 +3,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <random>
+#include <limits>
 
 
 ZmqWrapper::ZmqWrapper(bool isHeartbeat)
@@ -23,7 +24,7 @@ ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 		pingTimeout = EXPORTER_TIMEOUT;
 		break;
 	default:
-		pingTimeout = 1e99;
+		pingTimeout = std::numeric_limits<uint64_t>::max();
 	}
 
 
