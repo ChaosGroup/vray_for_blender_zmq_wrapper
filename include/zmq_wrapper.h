@@ -13,8 +13,15 @@
 #include "base_types.h"
 #include "zmq_message.hpp"
 
-static const uint64_t DISCONNECT_TIMEOUT = 5000;
-#define VRAY_ZMQ_PING
+static const uint64_t EXPORTER_TIMEOUT = 5000;
+static const uint64_t HEARBEAT_TIMEOUT = 1000;
+
+
+enum class ClientType: int {
+	None,
+	Exporter,
+	Heartbeat,
+};
 
 /**
  * Async wrapper for zmq::socket_t with callback on data received.
@@ -23,7 +30,7 @@ class ZmqWrapper {
 public:
 	typedef std::function<void(const VRayMessage &, ZmqWrapper *)> ZmqWrapperCallback_t;
 
-	ZmqWrapper();
+	ZmqWrapper(bool isHeatbeat = false);
 	~ZmqWrapper();
 
 	/// send will copy size bytes from data internally, callee can free memory immediately
@@ -40,11 +47,13 @@ public:
 
 	bool good() const;
 	bool connected() const;
+	void connect(const char * addr);
 
 	void forceFree();
 	void syncStop();
 
 private:
+	const ClientType clientType;
 	ZmqWrapperCallback_t callback;
 	std::thread worker;
 
@@ -52,18 +61,14 @@ private:
 	std::queue<VRayMessage> messageQue;
 	std::mutex messageMutex;
 
-protected:
+	std::chrono::high_resolution_clock::time_point lastHeartbeat;
+	uint64_t pingTimeout;
+
 	bool isWorking;
 	bool errorConnect;
 	bool isInit;
 	bool flushOnExit;
 	std::unique_ptr<zmq::socket_t> frontend;
-};
-
-
-class ZmqClient: public ZmqWrapper {
-public:
-	void connect(const char * addr);
 };
 
 #endif // _ZMQ_WRAPPER_H_

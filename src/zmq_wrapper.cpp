@@ -5,14 +5,28 @@
 #include <random>
 
 
-ZmqWrapper::ZmqWrapper()
+ZmqWrapper::ZmqWrapper(bool isHeartbeat)
     : context(new zmq::context_t(1))
     , isWorking(true)
     , errorConnect(false)
     , isInit(false)
     , flushOnExit(false)
     , frontend(nullptr)
+    , clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
 {
+	// send keepalive
+	switch (clientType) {
+	case ClientType::Heartbeat:
+		pingTimeout = HEARBEAT_TIMEOUT;
+		break;
+	case ClientType::Exporter:
+		pingTimeout = EXPORTER_TIMEOUT;
+		break;
+	default:
+		pingTimeout = 1e99;
+	}
+
+
 	bool socketInit = false;
 	std::condition_variable threadReady;
 	std::mutex threadMutex;
@@ -42,35 +56,43 @@ ZmqWrapper::ZmqWrapper()
 		}
 
 		auto lastActiveTime = std::chrono::high_resolution_clock::now();
+		lastHeartbeat = lastActiveTime;
 		zmq::message_t emptyFrame(0);
+
 		bool didSomeWork = false;
 		try {
 			while (this->isWorking) {
 				didSomeWork = false;
 
-#ifdef VRAY_ZMQ_PING
 				auto now = std::chrono::high_resolution_clock::now();
 
-				// send keepalive
-				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastActiveTime).count() > DISCONNECT_TIMEOUT / 2) {
-					zmq::message_t keepAlive(1);
+				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastActiveTime).count() > pingTimeout / 2) {
+					zmq::message_t keepAlive(&clientType, sizeof(clientType));
 					this->frontend->send(emptyFrame, ZMQ_SNDMORE);
 					if (this->frontend->send(keepAlive)) {
 						lastActiveTime = now;
 					}
 					didSomeWork = true;
 				}
-#endif
+
+				if (clientType == ClientType::Heartbeat) {
+					if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHeartbeat).count() > pingTimeout) {
+						puts("ZMQ hearbeat no responce...");
+						break;
+					}
+				}
+
 				if (this->messageQue.size() && this->frontend->connected()) {
 					while (this->messageQue.size()) {
 						didSomeWork = true;
 						std::lock_guard<std::mutex> lock(this->messageMutex);
 						auto & msg = this->messageQue.front().getMessage();
 
-						// since the wrapper is relying on msg size of 1 to ping wrap(pad so parsing is not broken) user messages that are with size 1 or less.
+						// since the wrapper is relying on msg size of sizeof(clientType) to ping wrap(pad so parsing is not broken)
+						// user messages that are with size sizeof(clientType) or less.
 						// since messages are wrapped in VRayMessage user does/should not rely on the actual message size for anything
-						if (msg.size() <= 1) {
-							zmq::message_t wrapper(2);
+						if (msg.size() <= sizeof(clientType)) {
+							zmq::message_t wrapper(sizeof(clientType) + 1);
 							memcpy(wrapper.data(), msg.data(), msg.size());
 							msg.move(&wrapper);
 						}
@@ -91,9 +113,7 @@ ZmqWrapper::ZmqWrapper()
 							assert(false && "Failed to send payload after empty frame && exception");
 						}
 
-#ifdef VRAY_ZMQ_PING
 						lastActiveTime = now;
-#endif
 						this->messageQue.pop();
 					}
 				}
@@ -103,14 +123,15 @@ ZmqWrapper::ZmqWrapper()
 					assert(!e.size() && "No empty frame expected from server!");
 					this->frontend->recv(&incoming);
 					didSomeWork = true;
-#ifdef VRAY_ZMQ_PING
-					bool propagateMessage = incoming.size() > 1;
-#else
-					bool propagateMessage = true;
-#endif
-					if (propagateMessage && this->callback) {
-						VRayMessage msg(incoming);
-						this->callback(msg, this);
+
+					if (incoming.size() == sizeof(ClientType)) {
+						lastHeartbeat = now;
+					} else if (incoming.size() > sizeof(ClientType)) {
+						if (this->callback) {
+							this->callback(VRayMessage(incoming), this);
+						}
+					} else {
+						puts("ZMQ unrecognized server message, discarding...");
 					}
 				}
 
@@ -151,12 +172,27 @@ ZmqWrapper::ZmqWrapper()
 	});
 
 
-
 	{
 		std::unique_lock<std::mutex> lock(threadMutex);
 		// wait for the thread to finish initing the socket, else bind & connect might be called before init
 		threadReady.wait(lock, [&socketInit] { return socketInit; });
 	}
+}
+
+void ZmqWrapper::connect(const char * addr) {
+	std::random_device device;
+	std::mt19937_64 generator(device());
+	uint64_t id = generator();
+
+	this->frontend->setsockopt(ZMQ_IDENTITY, &id, sizeof(id));
+
+	try {
+		this->frontend->connect(addr);
+	} catch (zmq::error_t & e) {
+		printf("ZMQ::connect(%s) exception: %s", addr, e.what());
+		this->errorConnect = true;
+	}
+	this->isInit = true;
 }
 
 bool ZmqWrapper::connected() const {
@@ -215,20 +251,4 @@ void ZmqWrapper::send(void * data, int size) {
 
 	std::lock_guard<std::mutex> lock(this->messageMutex);
 	this->messageQue.push(std::move(msg));
-}
-
-void ZmqClient::connect(const char * addr) {
-	std::random_device device;
-	std::mt19937_64 generator(device());
-	uint64_t id = generator();
-
-	this->frontend->setsockopt(ZMQ_IDENTITY, &id, sizeof(id));
-
-	try {
-		this->frontend->connect(addr);
-	} catch (zmq::error_t & e) {
-		printf("ZMQ::connect(%s) exception: %s", addr, e.what());
-		this->errorConnect = true;
-	}
-	this->isInit = true;
 }
