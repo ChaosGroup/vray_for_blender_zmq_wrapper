@@ -16,7 +16,7 @@
 #include "zmq_message.hpp"
 
 static const uint64_t EXPORTER_TIMEOUT = 5000;
-static const uint64_t HEARBEAT_TIMEOUT = 1000;
+static const uint64_t HEARBEAT_TIMEOUT = 2000;
 
 
 enum class ClientType: int {
