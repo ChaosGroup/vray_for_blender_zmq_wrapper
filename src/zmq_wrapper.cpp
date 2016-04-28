@@ -56,8 +56,10 @@ ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 			return;
 		}
 
-		auto lastActiveTime = std::chrono::high_resolution_clock::now();
-		lastHeartbeat = lastActiveTime;
+		auto lastHBRecv = std::chrono::high_resolution_clock::now();
+		// ensure we send one HB immediately
+		auto lastHBSend = lastHBRecv - std::chrono::milliseconds(HEARBEAT_TIMEOUT * 2);
+
 		zmq::message_t emptyFrame(0);
 
 		bool didSomeWork = false;
@@ -67,17 +69,17 @@ ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 
 				auto now = std::chrono::high_resolution_clock::now();
 
-				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastActiveTime).count() > pingTimeout / 2) {
+				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBSend).count() > pingTimeout / 2) {
 					zmq::message_t keepAlive(&clientType, sizeof(clientType));
 					this->frontend->send(emptyFrame, ZMQ_SNDMORE);
 					if (this->frontend->send(keepAlive)) {
-						lastActiveTime = now;
+						lastHBSend = now;
 					}
 					didSomeWork = true;
 				}
 
 				if (clientType == ClientType::Heartbeat) {
-					if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHeartbeat).count() > pingTimeout) {
+					if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > pingTimeout) {
 						puts("ZMQ hearbeat no responce...");
 						break;
 					}
@@ -114,7 +116,8 @@ ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 							assert(false && "Failed to send payload after empty frame && exception");
 						}
 
-						lastActiveTime = now;
+						// update hb send since we sent a message
+						lastHBSend = now;
 						this->messageQue.pop();
 					}
 				}
@@ -126,7 +129,7 @@ ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 					didSomeWork = true;
 
 					if (incoming.size() == sizeof(ClientType)) {
-						lastHeartbeat = now;
+						lastHBRecv = now;
 					} else if (incoming.size() > sizeof(ClientType)) {
 						if (this->callback) {
 							this->callback(VRayMessage(incoming), this);
