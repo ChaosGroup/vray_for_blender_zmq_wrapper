@@ -94,7 +94,8 @@ public:
 		GetImage,
 		SetQuality,
 		SetCurrentCamera,
-		SetCommitAction
+		SetCommitAction,
+		SetVfbShow
 	};
 
 	enum class ValueSetter {
