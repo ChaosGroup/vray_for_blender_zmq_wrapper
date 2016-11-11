@@ -65,7 +65,8 @@ public:
 		None,
 		Create,
 		Remove,
-		Update
+		Update,
+		Repalce
 	};
 
 	enum class RendererAction {
@@ -219,7 +220,11 @@ public:
 	}
 
 	static VRayMessage createMessage(const std::string & plugin, PluginAction action) {
-		assert((action == PluginAction::Create || action == PluginAction::Remove) && "Wrong PluginAction");
+		assert(
+		    (action == PluginAction::Create ||
+		     action == PluginAction::Remove ||
+		     action == PluginAction::Repalce) && "Wrong PluginAction");
+
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << action;
 		return fromStream(strm);
