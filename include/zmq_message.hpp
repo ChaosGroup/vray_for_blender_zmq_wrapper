@@ -228,10 +228,10 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(const std::string & pluginOld, const std::string & pluginNew, PluginAction action = PluginAction::Replace) {
-		assert(action == PluginAction::Replace && "Wrong PluginAction");
+	static VRayMessage msgReplacePlugin(const std::string & pluginOld, const std::string & pluginNew) {
+		VRayBaseTypes::AttrSimpleType<std::string> valWrapper(pluginNew);
 		SerializerStream strm;
-		strm << VRayMessage::Type::ChangePlugin << pluginOld << action << VRayBaseTypes::AttrSimpleType<std::string>(pluginNew);
+		strm << VRayMessage::Type::ChangePlugin << pluginOld << PluginAction::Replace << valWrapper.getType() << valWrapper;
 		return fromStream(strm);
 	}
 
