@@ -66,7 +66,7 @@ public:
 		Create,
 		Remove,
 		Update,
-		Repalce
+		Replace
 	};
 
 	enum class RendererAction {
@@ -161,6 +161,15 @@ public:
 		return this->message;
 	}
 
+	const std::string getPluginNew() const {
+		if (pluginAction == PluginAction::Replace && type == Type::ChangePlugin) {
+			return getValue<VRayBaseTypes::AttrSimpleType<std::string>>()->m_Value;
+		} else {
+			assert((pluginAction == PluginAction::Replace && type == Type::ChangePlugin) && "Getting plugin new");
+			return "";
+		}
+	}
+
 	const std::string & getProperty() const {
 		return this->pluginProperty;
 	}
@@ -219,12 +228,15 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(const std::string & plugin, PluginAction action) {
-		assert(
-		    (action == PluginAction::Create ||
-		     action == PluginAction::Remove ||
-		     action == PluginAction::Repalce) && "Wrong PluginAction");
+	static VRayMessage createMessage(const std::string & pluginOld, const std::string & pluginNew, PluginAction action = PluginAction::Replace) {
+		assert(action == PluginAction::Replace && "Wrong PluginAction");
+		SerializerStream strm;
+		strm << VRayMessage::Type::ChangePlugin << pluginOld << action << VRayBaseTypes::AttrSimpleType<std::string>(pluginNew);
+		return fromStream(strm);
+	}
 
+	static VRayMessage createMessage(const std::string & plugin, PluginAction action) {
+		assert((action == PluginAction::Create || action == PluginAction::Remove) && "Wrong PluginAction");
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << action;
 		return fromStream(strm);
@@ -475,6 +487,9 @@ private:
 				if (stream.hasMore()) {
 					stream >> pluginType;
 				}
+			} else if (pluginAction == PluginAction::Replace) {
+				assert(stream.hasMore() && "Missing new plugin for replace plugin");
+				readValue(stream);
 			}
 		}
 		else if (type == Type::SingleValue || type == Type::Image) {
