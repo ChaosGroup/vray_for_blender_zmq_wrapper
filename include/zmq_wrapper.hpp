@@ -1,12 +1,85 @@
-#include "zmq_wrapper.h"
-#include "zmq.hpp"
+#ifndef _ZMQ_WRAPPER_H_
+#define _ZMQ_WRAPPER_H_
+
+#include <string>
+#include <functional>
+#include <thread>
+#include <memory>
+#include <queue>
+#include <mutex>
+#include <cstdio>
+
 #include <chrono>
 #include <condition_variable>
 #include <random>
 #include <limits>
 
+#define NOMINMAX // zmq includes windows.h
+#include <zmq.hpp>
 
-ZmqWrapper::ZmqWrapper(bool isHeartbeat)
+#include "base_types.h"
+#include "zmq_message.hpp"
+
+static const uint64_t EXPORTER_TIMEOUT = 5000;
+static const uint64_t HEARBEAT_TIMEOUT = 2000;
+
+
+enum class ClientType: int {
+	None,
+	Exporter,
+	Heartbeat,
+};
+
+/**
+ * Async wrapper for zmq::socket_t with callback on data received.
+ */
+class ZmqWrapper {
+public:
+	typedef std::function<void(const VRayMessage &, ZmqWrapper *)> ZmqWrapperCallback_t;
+
+	ZmqWrapper(bool isHeatbeat = false);
+	~ZmqWrapper();
+
+	/// send will copy size bytes from data internally, callee can free memory immediately
+	void send(void *data, int size);
+
+	/// send steals the message contents and is ZmqWrapper's resposibility
+	void send(VRayMessage && message);
+
+	void setCallback(ZmqWrapperCallback_t cb);
+
+	// if set, all messages will be sent when dtor is called
+	void setFlushOnExit(bool flag);
+	bool getFlushOnexit() const;
+
+	bool good() const;
+	bool connected() const;
+	void connect(const char * addr);
+
+	void forceFree();
+	void syncStop();
+
+private:
+	const ClientType clientType;
+	ZmqWrapperCallback_t callback;
+	std::thread worker;
+
+	std::unique_ptr<zmq::context_t> context;
+	std::queue<VRayMessage> messageQue;
+	std::mutex messageMutex;
+
+	std::chrono::high_resolution_clock::time_point lastHeartbeat;
+	uint64_t pingTimeout;
+
+	bool isWorking;
+	bool errorConnect;
+	bool isInit;
+	bool flushOnExit;
+	std::unique_ptr<zmq::socket_t> frontend;
+};
+
+
+inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
     : context(new zmq::context_t(1))
     , isWorking(true)
     , errorConnect(false)
@@ -183,7 +256,7 @@ ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 	}
 }
 
-void ZmqWrapper::connect(const char * addr) {
+inline void ZmqWrapper::connect(const char * addr) {
 	std::random_device device;
 	std::mt19937_64 generator(device());
 	uint64_t id = generator();
@@ -199,15 +272,15 @@ void ZmqWrapper::connect(const char * addr) {
 	this->isInit = true;
 }
 
-bool ZmqWrapper::connected() const {
+inline bool ZmqWrapper::connected() const {
 	return this->isInit && !this->errorConnect;
 }
 
-bool ZmqWrapper::good() const {
+inline bool ZmqWrapper::good() const {
 	return this->isWorking;
 }
 
-void ZmqWrapper::syncStop() {
+inline void ZmqWrapper::syncStop() {
 	this->isWorking = false;
 	this->isInit = true;
 	if (this->worker.joinable()) {
@@ -215,13 +288,13 @@ void ZmqWrapper::syncStop() {
 	}
 }
 
-void ZmqWrapper::forceFree() {
+inline void ZmqWrapper::forceFree() {
 	this->isInit = true;
 	this->isWorking = false;
 	this->worker.detach();
 }
 
-ZmqWrapper::~ZmqWrapper() {
+inline ZmqWrapper::~ZmqWrapper() {
 	this->isWorking = false;
 	this->isInit = true;
 
@@ -232,27 +305,30 @@ ZmqWrapper::~ZmqWrapper() {
 	this->worker = std::thread();
 }
 
-void ZmqWrapper::setFlushOnExit(bool flag) {
+inline void ZmqWrapper::setFlushOnExit(bool flag) {
 	flushOnExit = flag;
 }
 
-bool ZmqWrapper::getFlushOnexit() const {
+inline bool ZmqWrapper::getFlushOnexit() const {
 	return flushOnExit;
 }
 
-void ZmqWrapper::setCallback(ZmqWrapperCallback_t cb) {
+inline void ZmqWrapper::setCallback(ZmqWrapperCallback_t cb) {
 	this->callback = cb;
 }
 
-void ZmqWrapper::send(VRayMessage && message) {
+inline void ZmqWrapper::send(VRayMessage && message) {
 	std::lock_guard<std::mutex> lock(this->messageMutex);
 	this->messageQue.push(std::move(message));
 }
 
-void ZmqWrapper::send(void * data, int size) {
+inline void ZmqWrapper::send(void * data, int size) {
 	VRayMessage msg(size);
 	memcpy(msg.getMessage().data(), data, size);
 
 	std::lock_guard<std::mutex> lock(this->messageMutex);
 	this->messageQue.push(std::move(msg));
 }
+
+
+#endif // _ZMQ_WRAPPER_H_
