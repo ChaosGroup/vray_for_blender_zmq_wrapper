@@ -101,6 +101,14 @@ enum RenderChannelType {
 	RenderChannelTypeVfbVrmtlreflecthigloss,
 	RenderChannelTypeVfbVrmtlrefractgloss,
 	RenderChannelTypeVfbShademapExport,
+	RenderChannelTypeVfbReflectAlhpha,
+	RenderChannelTypeVfbVrmtlreflectior,
+	RenderChannelTypeVfbMtlrenderid,
+	RenderChannelTypeVfbNoiselevel,
+	RenderChannelTypeVfbWorldposition,
+	RenderChannelTypeVfbDenoised,
+	RenderChannelTypeVfbWorldbumpnormal,
+	RenderChannelTypeVfbDefocusamount,
 };
 
 
