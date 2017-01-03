@@ -90,7 +90,7 @@ public:
 		SetAnimationProperties,
 		SetCurrentTime,
 		ClearFrameValues,
-		SetRendererStatus,
+		SetRendererState,
 		SetRendererType,
 		GetImage,
 		SetQuality,
@@ -111,7 +111,7 @@ public:
 		Animation
 	};
 
-	enum class RendererStatus {
+	enum class RendererState {
 		None,
 		Abort,
 		Continue
@@ -122,7 +122,7 @@ public:
 	    , type(Type::None)
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
-	    , rendererStatus(RendererStatus::None)
+	    , rendererState(RendererState::None)
 	    , valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
@@ -136,7 +136,7 @@ public:
 	    , type(other.type)
 	    , rendererAction(other.rendererAction)
 	    , rendererType(other.rendererType)
-	    , rendererStatus(other.rendererStatus)
+	    , rendererState(other.rendererState)
 	    , valueType(other.valueType)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(other.pluginAction)
@@ -151,7 +151,7 @@ public:
 	    , type(Type::None)
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
-	    , rendererStatus(RendererStatus::None)
+	    , rendererState(RendererState::None)
 	    , valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
@@ -202,8 +202,8 @@ public:
 		return rendererType;
 	}
 
-	RendererStatus getRendererStatus() const {
-		return rendererStatus;
+	RendererState getRendererState() const {
+		return rendererState;
 	}
 
 	void getRendererSize(int & width, int & height) const {
@@ -222,20 +222,20 @@ public:
 
 	/// Static methods for creating messages
 	///
-	static VRayMessage createMessage(const std::string & pluginName, const std::string & pluginType) {
+	static VRayMessage msgPluginCreate(const std::string & pluginName, const std::string & pluginType) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << pluginName << PluginAction::Create << pluginType;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgReplacePlugin(const std::string & pluginOld, const std::string & pluginNew) {
+	static VRayMessage msgPluginReplace(const std::string & pluginOld, const std::string & pluginNew) {
 		VRayBaseTypes::AttrSimpleType<std::string> valWrapper(pluginNew);
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << pluginOld << PluginAction::Replace << valWrapper.getType() << valWrapper;
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(const std::string & plugin, PluginAction action) {
+	static VRayMessage msgPluginAction(const std::string & plugin, PluginAction action) {
 		assert((action == PluginAction::Create || action == PluginAction::Remove) && "Wrong PluginAction");
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << action;
@@ -244,7 +244,7 @@ public:
 
 	/// Creates message to control a plugin property
 	template <typename T>
-	static VRayMessage createMessage(const std::string & plugin, const std::string & property, const T & value, bool stringValue = false) {
+	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const T & value, bool stringValue = false) {
 		using namespace std;
 		SerializerStream strm;
 		ValueSetter setter = stringValue ? ValueSetter::AsString : ValueSetter::Default;
@@ -252,7 +252,7 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(const std::string & plugin, const std::string & property, const std::string & value, bool stringValue) {
+	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const std::string & value, bool stringValue) {
 		using namespace std;
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property
@@ -262,20 +262,20 @@ public:
 
 	/// Create message containing only a value, eg AttrImage
 	template <typename T>
-	static VRayMessage createMessage(const T & value) {
+	static VRayMessage msgSingleValue(const T & value) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::SingleValue << value.getType() << value;
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(const VRayBaseTypes::AttrImageSet & value) {
+	static VRayMessage msgImageSet(const VRayBaseTypes::AttrImageSet & value) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::Image << value.getType() << value;
 		return fromStream(strm);
 	}
 
 	/// Create message to control renderer
-	static VRayMessage createMessage(const RendererAction & action) {
+	static VRayMessage msgRendererAction(const RendererAction & action) {
 		assert(action < RendererAction::_ArgumentRenderAction && "Renderer action provided requires argument!");
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << action;
@@ -283,7 +283,7 @@ public:
 	}
 
 	template <typename T>
-	static VRayMessage createMessage(const RendererAction & action, const T & value) {
+	static VRayMessage msgRendererAction(const RendererAction & action, const T & value) {
 		assert(action > RendererAction::_ArgumentRenderAction && "Renderer action provided requires NO argument!");
 		SerializerStream strm;
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(value);
@@ -292,21 +292,20 @@ public:
 	}
 
 	template <typename T>
-	static VRayMessage createMessage(RendererStatus status, const T & val) {
+	static VRayMessage msgRendererState(RendererState state, const T & val) {
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(val);
 		SerializerStream strm;
-		strm << Type::ChangeRenderer << RendererAction::SetRendererStatus << status << valWrapper.getType() << valWrapper;
+		strm << Type::ChangeRenderer << RendererAction::SetRendererState << state << valWrapper.getType() << valWrapper;
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(RendererType type) {
+	static VRayMessage msgRendererType(RendererType type) {
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << RendererAction::SetRendererType << type;
 		return fromStream(strm);
 	}
 
-	static VRayMessage createMessage(const RendererAction & action, int width, int height) {
-		assert(action == RendererAction::Resize && "Resize renderer action required");
+	static VRayMessage msgRendererResize(int width, int height) {
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << RendererAction::Resize << width << height;
 		return fromStream(strm);
@@ -503,8 +502,8 @@ private:
 			else if (rendererAction == RendererAction::SetRendererType) {
 				stream >> rendererType;
 			}
-			else if (rendererAction == RendererAction::SetRendererStatus) {
-				stream >> rendererStatus;
+			else if (rendererAction == RendererAction::SetRendererState) {
+				stream >> rendererState;
 				readValue(stream);
 			}
 			else if (rendererAction > RendererAction::_ArgumentRenderAction) {
@@ -522,7 +521,7 @@ private:
 
 	RendererAction            rendererAction;
 	RendererType              rendererType;
-	RendererStatus            rendererStatus;
+	RendererState             rendererState;
 
 	VRayBaseTypes::ValueType  valueType;
 	ValueSetter               valueSetter;
