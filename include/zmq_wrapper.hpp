@@ -67,6 +67,7 @@ private:
 	std::unique_ptr<zmq::context_t> context;
 	std::queue<VRayMessage> messageQue;
 	std::mutex messageMutex;
+	std::mutex callbackMutex;
 
 	std::chrono::high_resolution_clock::time_point lastHeartbeat;
 	uint64_t pingTimeout;
@@ -204,6 +205,7 @@ inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 					if (incoming.size() == sizeof(ClientType)) {
 						lastHBRecv = now;
 					} else if (incoming.size() > sizeof(ClientType)) {
+						std::lock_guard<std::mutex> cbLock(callbackMutex);
 						if (this->callback) {
 							this->callback(VRayMessage(incoming), this);
 						}
@@ -314,6 +316,7 @@ inline bool ZmqWrapper::getFlushOnexit() const {
 }
 
 inline void ZmqWrapper::setCallback(ZmqWrapperCallback_t cb) {
+	std::lock_guard<std::mutex> cbLock(callbackMutex);
 	this->callback = cb;
 }
 
