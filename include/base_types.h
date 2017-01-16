@@ -201,9 +201,9 @@ struct AttrImage {
 		, size(other.size)
 		, width(other.width)
 		, height(other.height)
-		, imageType(other.imageType)
 		, x(other.x)
 		, y(other.y)
+		, imageType(other.imageType)
 	{}
 
 	AttrImage &operator=(AttrImage &&other) {
@@ -241,13 +241,13 @@ struct AttrImage {
 		::memcpy(this->data.get(), data, size);
 	}
 
-	std::unique_ptr<char[]> data;
-	size_t size;
-	int width;
-	int height;
-	int x;
-	int y;
-	ImageType imageType;
+	std::unique_ptr<char[]> data; ///< Image bytes data
+	size_t size; ///< Size in bytes
+	int width; ///< Width in pixels
+	int height; ///< Height in pixels
+	int x; ///< if positive - X of top left corner of bucket sub image, else negative for full
+	int y; ///< if positive - Y of top left corner of bucket sub image, else negative for full
+	ImageType imageType; ///< The format of the image data (JPG, RGBA, etc.)
 
 private:
 	AttrImage(const AttrImage&) = delete;

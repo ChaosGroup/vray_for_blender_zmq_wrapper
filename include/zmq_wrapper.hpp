@@ -81,13 +81,13 @@ private:
 
 
 inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
-    : context(new zmq::context_t(1))
+    : clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
+    , context(new zmq::context_t(1))
     , isWorking(true)
     , errorConnect(false)
     , isInit(false)
     , flushOnExit(false)
     , frontend(nullptr)
-    , clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
 {
 	// send keepalive
 	switch (clientType) {
