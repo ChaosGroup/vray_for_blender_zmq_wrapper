@@ -244,15 +244,14 @@ public:
 
 	/// Creates message to control a plugin property
 	template <typename T>
-	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const T & value, bool stringValue = false) {
+	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const T & value) {
 		using namespace std;
 		SerializerStream strm;
-		ValueSetter setter = stringValue ? ValueSetter::AsString : ValueSetter::Default;
-		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property << setter << value.getType() << value;
+		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property << ValueSetter::Default << value.getType() << value;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const std::string & value, bool stringValue) {
+	static VRayMessage msgPluginSetPropertyString(const std::string & plugin, const std::string & property, const std::string & value) {
 		using namespace std;
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property
