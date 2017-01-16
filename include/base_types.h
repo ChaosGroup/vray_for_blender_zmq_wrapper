@@ -191,19 +191,19 @@ struct AttrImage {
 	    , size(0)
 	    , width(0)
 	    , height(0)
+	    , x(-1)
+	    , y(-1)
 	    , imageType(NONE)
-		, x(-1)
-		, y(-1)
 	{}
 
 	AttrImage(AttrImage &&other)
-		: data(std::move(other.data))
-		, size(other.size)
-		, width(other.width)
-		, height(other.height)
-		, x(other.x)
-		, y(other.y)
-		, imageType(other.imageType)
+	    : data(std::move(other.data))
+	    , size(other.size)
+	    , width(other.width)
+	    , height(other.height)
+	    , x(other.x)
+	    , y(other.y)
+	    , imageType(other.imageType)
 	{}
 
 	AttrImage &operator=(AttrImage &&other) {
@@ -221,12 +221,12 @@ struct AttrImage {
 
 	AttrImage(const void *data, size_t size, AttrImage::ImageType type, int width, int height, int x = -1, int y = -1)
 	    : data(nullptr)
-		, size(size)
-		, width(width)
-		, height(height)
-		, x(x)
-		, y(y)
-		, imageType(type)
+	    , size(size)
+	    , width(width)
+	    , height(height)
+	    , x(x)
+	    , y(y)
+	    , imageType(type)
 	{
 		set(data, size);
 	}
