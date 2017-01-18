@@ -56,7 +56,6 @@ public:
 	bool connected() const;
 	void connect(const char * addr);
 
-	void forceFree();
 	void syncStop();
 
 private:
@@ -288,12 +287,6 @@ inline void ZmqWrapper::syncStop() {
 	if (this->worker.joinable()) {
 		this->worker.join();
 	}
-}
-
-inline void ZmqWrapper::forceFree() {
-	this->isInit = true;
-	this->isWorking = false;
-	this->worker.detach();
 }
 
 inline ZmqWrapper::~ZmqWrapper() {
