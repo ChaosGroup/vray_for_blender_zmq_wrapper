@@ -133,7 +133,7 @@ private:
 
 	std::thread worker; ///< Thread serving messages and calling the callback
 
-	std::unique_ptr<zmq::context_t> context; ///< The zmq context
+	zmq::context_t context; ///< The zmq context
 	std::deque<VRayMessage> messageQue; ///< Queue with outstanding messages
 	std::mutex messageMutex; ///< Mutex protecting @messageQue
 
@@ -153,7 +153,7 @@ private:
 
 inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
     : clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
-    , context(new zmq::context_t(1))
+    , context(1)
     , isWorking(true)
     , errorConnect(false)
     , startServing(false)
@@ -188,18 +188,18 @@ inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 
 inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mtx, std::condition_variable & workerReady) {
 	try {
-		std::lock_guard<std::mutex> lock(mtx);
 
-		this->frontend = std::unique_ptr<zmq::socket_t>(new zmq::socket_t(*(this->context), ZMQ_DEALER));
+		this->frontend = std::unique_ptr<zmq::socket_t>(new zmq::socket_t(context, ZMQ_DEALER));
 		int linger = 0;
 		this->frontend->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
 		int wait = HEARBEAT_TIMEOUT / 2;
 		this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
 
+		std::lock_guard<std::mutex> lock(mtx);
 		socketInit = true;
 	} catch (zmq::error_t & e) {
-		printf("ZMQ exception while worker initialization: %s", e.what());
+		printf("ZMQ exception while worker initialization: %s\n", e.what());
 		this->isWorking = false;
 		workerReady.notify_all();
 		return;
@@ -213,24 +213,33 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		}
 	}
 
-	if (this->errorConnect) {
+	std::shared_ptr<void> atScopeExit(nullptr, [this] (void *) {
+		this->frontend->close();
 		this->isWorking = false;
+	});
+
+	if (this->errorConnect) {
 		return;
 	}
 
 	zmq::message_t emtpyFrame(0);
 
 	// send handshake
-	if (clientType == ClientType::Exporter) {
-		frontend->send(ControlFrame::make(clientType, ControlMessage::EXPORTER_CONNECT_MSG), ZMQ_SNDMORE);
-	} else {
-		frontend->send(ControlFrame::make(clientType, ControlMessage::HEARTBEAT_CONNECT_MSG), ZMQ_SNDMORE);
+	try {
+		if (clientType == ClientType::Exporter) {
+			frontend->send(ControlFrame::make(clientType, ControlMessage::EXPORTER_CONNECT_MSG), ZMQ_SNDMORE);
+		} else {
+			frontend->send(ControlFrame::make(clientType, ControlMessage::HEARTBEAT_CONNECT_MSG), ZMQ_SNDMORE);
+		}
+		this->frontend->send(emtpyFrame);
+	} catch (zmq::error_t & ex) {
+		printf("ZMQ failed to send handshake [%s]\n", ex.what());
+		return;
 	}
-	this->frontend->send(emtpyFrame);
 
 
 	// recv handshake
-	{
+	try {
 		int wait = EXPORTER_TIMEOUT;
 		this->frontend->setsockopt(ZMQ_RCVTIMEO, &wait, sizeof(wait));
 
@@ -238,7 +247,6 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		bool recv = frontend->recv(&controlMsg);
 		if (!recv) {
 			puts("Server did not respond in expected timeout, stopping client!");
-			isWorking = false;
 			return;
 		}
 		frontend->recv(&emptyMsg);
@@ -246,30 +254,29 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		ControlFrame frame(controlMsg);
 
 		if (!frame) {
-			printf("Expected protocol version [%d], server speaks [%d]", ZMQ_PROTOCOL_VERSION, frame.version);
-			isWorking = false;
+			printf("Expected protocol version [%d], server speaks [%d]\n", ZMQ_PROTOCOL_VERSION, frame.version);
 			return;
 		}
 
 		if (frame.type != clientType) {
 			puts("Server created mismatching type of worker for us!");
-			isWorking = false;
 			return;
 		}
 
 		if (clientType == ClientType::Exporter) {
 			if (frame.control != ControlMessage::RENDERER_CREATE_MSG) {
 				puts("Server responded with different than renderer created!");
-				isWorking = false;
 				return;
 			}
 		} else {
 			if (frame.control != ControlMessage::HEARTBEAT_CREATE_MSG) {
 				puts("Server responded with different than heartbeat created!");
-				isWorking = false;
 				return;
 			}
 		}
+	} catch (zmq::error_t & ex) {
+		printf("ZMQ failed to receive handshake [%s]\n", ex.what());
+		return;
 	}
 
 	puts("Handshake done...");
@@ -287,8 +294,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		try {
 			const int pollRes = zmq::poll(&pollContext, 1, 10);
 		} catch (zmq::error_t & ex) {
-			printf("ZMQ failed [%s] zmq::poll - stopping client.", ex.what());
-			isWorking = false;
+			printf("ZMQ failed [%s] zmq::poll - stopping client.\n", ex.what());
 			return;
 		}
 
@@ -301,15 +307,14 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 					this->frontend->recv(&controlMsg);
 					this->frontend->recv(&payloadMsg);
 				} catch (zmq::error_t & ex) {
-					printf("ZMQ failed [%s] zmq::socket_t::recv - stopping client.", ex.what());
-					isWorking = false;
+					printf("ZMQ failed [%s] zmq::socket_t::recv - stopping client.\n", ex.what());
 					return;
 				}
 
 				ControlFrame frame(controlMsg);
 
 				if (!frame) {
-					printf("Expected protocol version [%d], server speaks [%d], dropping message.", ZMQ_PROTOCOL_VERSION, frame.version);
+					printf("Expected protocol version [%d], server speaks [%d], dropping message.\n", ZMQ_PROTOCOL_VERSION, frame.version);
 					continue;
 				}
 
@@ -329,10 +334,12 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 					if (payloadMsg.size() != 0) {
 						puts("Missing empty frame after ping");
 					}
+					printf("Got pIng [%d]\n", clientType);
 				} else if (frame.control == ControlMessage::PONG_MSG) {
 					if (payloadMsg.size() != 0) {
 						puts("Missing empty frame after pong");
 					}
+					printf("Got pOng [%d]\n", clientType);
 				}
 
 				int more = 0;
@@ -340,9 +347,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 				try {
 					frontend->getsockopt(ZMQ_RCVMORE, &more, &more_size);
 				} catch (zmq::error_t & ex) {
-					puts("Client failed to getsockopt!");
-					isWorking = false;
-					return;
+					printf("ZMQ failed [%s] zmq::socket_t::getsockopt.\n", ex.what());
 				}
 				if (!more) {
 					break;
@@ -359,13 +364,13 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 					bool sent = frontend->send(ControlFrame::make(clientType, ControlMessage::PING_MSG), ZMQ_SNDMORE);
 					if (sent) {
 						sent = frontend->send(emtpyFrame);
+						printf("Sent pIng [%d]\n", clientType);
 						lastHBSend = now;
 						didWork = true;
 					}
 				}
 			} catch (zmq::error_t & ex) {
-				printf("ZMQ failed [%s] zmq::socket_t::send - stopping client.", ex.what());
-				isWorking = false;
+				printf("ZMQ failed [%s] zmq::socket_t::send - stopping client.\n", ex.what());
 				return;
 			}
 		}
@@ -373,7 +378,6 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		now = std::chrono::high_resolution_clock::now();
 		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > pingTimeout) {
 			puts("ZMQ server unresponsive, stopping client");
-			isWorking = false;
 			return;
 		}
 
@@ -400,13 +404,9 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 
 			this->frontend->close();
 		} catch (zmq::error_t &e) {
-			printf("ZMQ exception while flushing on exit: %s", e.what());
+			printf("ZMQ exception while flushing on exit: %s\n", e.what());
 		}
-	} else {
-		this->frontend->close();
 	}
-
-	this->isWorking = false;
 }
 
 inline bool ZmqWrapper::workerSendoutMessages(time_point & lastHBSend) {
@@ -448,7 +448,7 @@ inline void ZmqWrapper::connect(const char * addr) {
 	try {
 		this->frontend->connect(addr);
 	} catch (zmq::error_t & e) {
-		printf("ZMQ::connect(%s) exception: %s", addr, e.what());
+		printf("ZMQ::connect(%s) exception: %s\n", addr, e.what());
 		this->errorConnect = true;
 	}
 
@@ -472,12 +472,18 @@ inline bool ZmqWrapper::good() const {
 }
 
 inline void ZmqWrapper::syncStop() {
-	this->isWorking = false;
-	this->startServing = true;
-	if (this->worker.joinable()) {
-		this->worker.join();
+	{
+		std::lock_guard<std::mutex> lock(startServingMutex);
+		isWorking = false;
+		startServing = true;
+		startServingCond.notify_all();
 	}
-	this->worker = std::thread();
+
+	context.close();
+	if (worker.joinable()) {
+		worker.join();
+	}
+	worker = std::thread();
 }
 
 inline ZmqWrapper::~ZmqWrapper() {
