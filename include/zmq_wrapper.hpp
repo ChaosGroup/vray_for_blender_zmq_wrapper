@@ -246,7 +246,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		zmq::message_t controlMsg, emptyMsg;
 		bool recv = frontend->recv(&controlMsg);
 		if (!recv) {
-			puts("Server did not respond in expected timeout, stopping client!");
+			puts("ZMQ server did not respond in expected timeout, stopping client!");
 			return;
 		}
 		frontend->recv(&emptyMsg);
@@ -254,23 +254,23 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		ControlFrame frame(controlMsg);
 
 		if (!frame) {
-			printf("Expected protocol version [%d], server speaks [%d]\n", ZMQ_PROTOCOL_VERSION, frame.version);
+			printf("ZMQ expected protocol version [%d], server speaks [%d]\n", ZMQ_PROTOCOL_VERSION, frame.version);
 			return;
 		}
 
 		if (frame.type != clientType) {
-			puts("Server created mismatching type of worker for us!");
+			puts("ZMQ server created mismatching type of worker for us!");
 			return;
 		}
 
 		if (clientType == ClientType::Exporter) {
 			if (frame.control != ControlMessage::RENDERER_CREATE_MSG) {
-				puts("Server responded with different than renderer created!");
+				puts("ZMQ server responded with different than renderer created!");
 				return;
 			}
 		} else {
 			if (frame.control != ControlMessage::HEARTBEAT_CREATE_MSG) {
-				puts("Server responded with different than heartbeat created!");
+				puts("ZMQ server responded with different than heartbeat created!");
 				return;
 			}
 		}
@@ -279,7 +279,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		return;
 	}
 
-	puts("Handshake done...");
+	puts("ZMQ connected to server.");
 
 	auto lastHBRecv = std::chrono::high_resolution_clock::now();
 	// ensure we send one HB immediately
@@ -314,12 +314,12 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 				ControlFrame frame(controlMsg);
 
 				if (!frame) {
-					printf("Expected protocol version [%d], server speaks [%d], dropping message.\n", ZMQ_PROTOCOL_VERSION, frame.version);
+					printf("ZMQ expected protocol version [%d], server speaks [%d], dropping message.\n", ZMQ_PROTOCOL_VERSION, frame.version);
 					continue;
 				}
 
 				if (frame.type != clientType) {
-					puts("Server sent mismatching msg type of worker for us!");
+					puts("ZMQ server sent mismatching msg type of worker for us!");
 					continue;
 				}
 
@@ -332,14 +332,12 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 					}
 				} else if (frame.control == ControlMessage::PING_MSG) {
 					if (payloadMsg.size() != 0) {
-						puts("Missing empty frame after ping");
+						puts("ZMQ missing empty frame after ping");
 					}
-					printf("Got pIng [%d]\n", clientType);
 				} else if (frame.control == ControlMessage::PONG_MSG) {
 					if (payloadMsg.size() != 0) {
-						puts("Missing empty frame after pong");
+						puts("ZMQ missing empty frame after pong");
 					}
-					printf("Got pOng [%d]\n", clientType);
 				}
 
 				int more = 0;
@@ -362,7 +360,6 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 					bool sent = frontend->send(ControlFrame::make(clientType, ControlMessage::PING_MSG), ZMQ_SNDMORE);
 					if (sent) {
 						sent = frontend->send(emtpyFrame);
-						printf("Sent pIng [%d]\n", clientType);
 						lastHBSend = now;
 						didWork = true;
 					}
@@ -448,7 +445,7 @@ inline void ZmqWrapper::connect(const char * addr) {
 	try {
 		this->frontend->connect(addr);
 	} catch (zmq::error_t & e) {
-		printf("ZMQ::connect(%s) exception: %s\n", addr, e.what());
+		printf("ZMQ zmq::socket_t::connect(%s) exception: %s\n", addr, e.what());
 		this->errorConnect = true;
 	}
 
