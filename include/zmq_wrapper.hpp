@@ -134,6 +134,7 @@ private:
 	std::thread worker; ///< Thread serving messages and calling the callback
 
 	zmq::context_t context; ///< The zmq context
+	bool contextClosed;
 	std::deque<VRayMessage> messageQue; ///< Queue with outstanding messages
 	std::mutex messageMutex; ///< Mutex protecting @messageQue
 
@@ -154,6 +155,7 @@ private:
 inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
     : clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
     , context(1)
+    , contextClosed(false)
     , isWorking(true)
     , errorConnect(false)
     , startServing(false)
@@ -479,7 +481,11 @@ inline void ZmqWrapper::syncStop() {
 		startServingCond.notify_all();
 	}
 
-	context.close();
+	if (!contextClosed) {
+		context.close();
+		contextClosed = true;
+	}
+
 	if (worker.joinable()) {
 		worker.join();
 	}
