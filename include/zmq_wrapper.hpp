@@ -357,8 +357,6 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 
 		if (pollContext.revents & ZMQ_POLLOUT) {
 			try {
-				didWork = didWork || !messageQue.empty();
-				workerSendoutMessages(lastHBSend);
 				now = std::chrono::high_resolution_clock::now();
 				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBSend).count() > pingTimeout / 2) {
 					bool sent = frontend->send(ControlFrame::make(clientType, ControlMessage::PING_MSG), ZMQ_SNDMORE);
@@ -369,6 +367,9 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 						didWork = true;
 					}
 				}
+
+				didWork = didWork || !messageQue.empty();
+				workerSendoutMessages(lastHBSend);
 			} catch (zmq::error_t & ex) {
 				printf("ZMQ failed [%s] zmq::socket_t::send - stopping client.\n", ex.what());
 				return;
