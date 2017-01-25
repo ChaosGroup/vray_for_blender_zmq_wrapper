@@ -376,8 +376,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 			}
 		}
 
-		now = std::chrono::high_resolution_clock::now();
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > pingTimeout) {
+		if (clientType == ClientType::Heartbeat && std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > pingTimeout) {
 			puts("ZMQ server unresponsive, stopping client");
 			return;
 		}
