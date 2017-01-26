@@ -1,6 +1,9 @@
 #ifndef _ZMQ_WRAPPER_H_
 #define _ZMQ_WRAPPER_H_
 
+#define NOMINMAX // zmq includes windows.h
+#include <zmq.hpp>
+
 #include <string>
 #include <functional>
 #include <thread>
@@ -14,20 +17,62 @@
 #include <random>
 #include <limits>
 
-#define NOMINMAX // zmq includes windows.h
-#include <zmq.hpp>
-
 #include "base_types.h"
 #include "zmq_message.hpp"
 
-static const uint64_t EXPORTER_TIMEOUT = 5000;
-static const uint64_t HEARBEAT_TIMEOUT = 2000;
+static const int EXPORTER_TIMEOUT = 5000;
+static const int HEARBEAT_TIMEOUT = 2000;
 static const int MAX_CONSEQ_MESSAGES = 10;
 
 enum class ClientType: int {
 	None,
 	Exporter,
 	Heartbeat,
+};
+
+enum class ControlMessage: int {
+	DATA_MSG = 0,
+
+	EXPORTER_CONNECT_MSG = 1000,
+	HEARTBEAT_CONNECT_MSG = 1001,
+
+	RENDERER_CREATE_MSG = 2000,
+	HEARTBEAT_CREATE_MSG = 2001,
+
+	PING_MSG = 3000,
+	PONG_MSG = 3001,
+};
+
+static const int ZMQ_PROTOCOL_VERSION = 1000;
+
+struct ControlFrame {
+	int version;
+	ClientType type;
+	ControlMessage control;
+
+	ControlFrame(ClientType type = ClientType::Exporter, ControlMessage ctrl = ControlMessage::DATA_MSG)
+		: version(ZMQ_PROTOCOL_VERSION)
+		, type(type)
+		, control(ctrl) {}
+
+	explicit ControlFrame(const zmq::message_t & msg) {
+		if (msg.size() != sizeof(*this)) {
+			version = -1;
+		} else {
+			memcpy(this, msg.data(), sizeof(*this));
+		}
+	}
+
+	explicit operator bool() {
+		return version == ZMQ_PROTOCOL_VERSION;
+	}
+
+	static zmq::message_t make(ClientType type = ClientType::Exporter, ControlMessage ctrl = ControlMessage::DATA_MSG) {
+		zmq::message_t msg(sizeof(ControlFrame));
+		ControlFrame frame(type, ctrl);
+		memcpy(msg.data(), &frame, msg.size());
+		return msg;
+	}
 };
 
 
@@ -73,6 +118,8 @@ public:
 	void syncStop();
 
 private:
+	void sendDataMessage(zmq::message_t & msg);
+
 	typedef std::chrono::high_resolution_clock::time_point time_point;
 
 	/// Start function for the worker thread (sends and receives messages)
@@ -86,7 +133,7 @@ private:
 
 	std::thread worker; ///< Thread serving messages and calling the callback
 
-	std::unique_ptr<zmq::context_t> context; ///< The zmq context
+	zmq::context_t context; ///< The zmq context
 	std::deque<VRayMessage> messageQue; ///< Queue with outstanding messages
 	std::mutex messageMutex; ///< Mutex protecting @messageQue
 
@@ -106,7 +153,7 @@ private:
 
 inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
     : clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
-    , context(new zmq::context_t(1))
+    , context(1)
     , isWorking(true)
     , errorConnect(false)
     , startServing(false)
@@ -139,18 +186,20 @@ inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 	}
 }
 
-
 inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mtx, std::condition_variable & workerReady) {
 	try {
-		std::lock_guard<std::mutex> lock(mtx);
 
-		this->frontend = std::unique_ptr<zmq::socket_t>(new zmq::socket_t(*(this->context), ZMQ_DEALER));
+		this->frontend = std::unique_ptr<zmq::socket_t>(new zmq::socket_t(context, ZMQ_DEALER));
 		int linger = 0;
 		this->frontend->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
+		int wait = HEARBEAT_TIMEOUT / 2;
+		this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
+
+		std::lock_guard<std::mutex> lock(mtx);
 		socketInit = true;
 	} catch (zmq::error_t & e) {
-		printf("ZMQ exception while worker initialization: %s", e.what());
+		printf("ZMQ exception while worker initialization: %s\n", e.what());
 		this->isWorking = false;
 		workerReady.notify_all();
 		return;
@@ -164,72 +213,176 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		}
 	}
 
-	if (this->errorConnect) {
+	std::shared_ptr<void> atScopeExit(nullptr, [this] (void *) {
+		this->frontend->close();
 		this->isWorking = false;
+	});
+
+	if (this->errorConnect) {
 		return;
 	}
+
+	zmq::message_t emtpyFrame(0);
+
+	// send handshake
+	try {
+		if (clientType == ClientType::Exporter) {
+			frontend->send(ControlFrame::make(clientType, ControlMessage::EXPORTER_CONNECT_MSG), ZMQ_SNDMORE);
+		} else {
+			frontend->send(ControlFrame::make(clientType, ControlMessage::HEARTBEAT_CONNECT_MSG), ZMQ_SNDMORE);
+		}
+		this->frontend->send(emtpyFrame);
+	} catch (zmq::error_t & ex) {
+		printf("ZMQ failed to send handshake [%s]\n", ex.what());
+		return;
+	}
+
+
+	// recv handshake
+	try {
+		int wait = EXPORTER_TIMEOUT;
+		this->frontend->setsockopt(ZMQ_RCVTIMEO, &wait, sizeof(wait));
+
+		zmq::message_t controlMsg, emptyMsg;
+		bool recv = frontend->recv(&controlMsg);
+		if (!recv) {
+			puts("ZMQ server did not respond in expected timeout, stopping client!");
+			return;
+		}
+		frontend->recv(&emptyMsg);
+
+		ControlFrame frame(controlMsg);
+
+		if (!frame) {
+			printf("ZMQ expected protocol version [%d], server speaks [%d]\n", ZMQ_PROTOCOL_VERSION, frame.version);
+			return;
+		}
+
+		if (frame.type != clientType) {
+			puts("ZMQ server created mismatching type of worker for us!");
+			return;
+		}
+
+		if (clientType == ClientType::Exporter) {
+			if (frame.control != ControlMessage::RENDERER_CREATE_MSG) {
+				puts("ZMQ server responded with different than renderer created!");
+				return;
+			}
+		} else {
+			if (frame.control != ControlMessage::HEARTBEAT_CREATE_MSG) {
+				puts("ZMQ server responded with different than heartbeat created!");
+				return;
+			}
+		}
+	} catch (zmq::error_t & ex) {
+		printf("ZMQ failed to receive handshake [%s]\n", ex.what());
+		return;
+	}
+
+	puts("ZMQ connected to server.");
 
 	auto lastHBRecv = std::chrono::high_resolution_clock::now();
 	// ensure we send one HB immediately
 	auto lastHBSend = lastHBRecv - std::chrono::milliseconds(HEARBEAT_TIMEOUT * 2);
 
-	zmq::message_t emptyFrame(0);
+	zmq::pollitem_t pollContext = {*this->frontend, 0, ZMQ_POLLIN | ZMQ_POLLOUT, 0};
 
-	bool didSomeWork = false;
-	try {
-		while (this->isWorking) {
-			didSomeWork = false;
+	while (isWorking) {
+		bool didWork = false;
+		auto now = std::chrono::high_resolution_clock::now();
 
-			auto now = std::chrono::high_resolution_clock::now();
+		try {
+			const int pollRes = zmq::poll(&pollContext, 1, 10);
+		} catch (zmq::error_t & ex) {
+			printf("ZMQ failed [%s] zmq::poll - stopping client.\n", ex.what());
+			return;
+		}
 
-			if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBSend).count() > pingTimeout / 2) {
-				zmq::message_t keepAlive(&clientType, sizeof(clientType));
-				this->frontend->send(emptyFrame, ZMQ_SNDMORE);
-				if (this->frontend->send(keepAlive)) {
-					lastHBSend = now;
+		if (pollContext.revents & ZMQ_POLLIN) {
+			didWork = true;
+
+			for (int c = 0; c < MAX_CONSEQ_MESSAGES && isWorking; ++c) {
+				zmq::message_t controlMsg, payloadMsg;
+				try {
+					this->frontend->recv(&controlMsg);
+					this->frontend->recv(&payloadMsg);
+				} catch (zmq::error_t & ex) {
+					printf("ZMQ failed [%s] zmq::socket_t::recv - stopping client.\n", ex.what());
+					return;
 				}
-				didSomeWork = true;
-			}
 
-			if (clientType == ClientType::Heartbeat) {
-				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > pingTimeout) {
-					puts("ZMQ hearbeat no responce...");
+				ControlFrame frame(controlMsg);
+
+				if (!frame) {
+					printf("ZMQ expected protocol version [%d], server speaks [%d], dropping message.\n", ZMQ_PROTOCOL_VERSION, frame.version);
+					continue;
+				}
+
+				if (frame.type != clientType) {
+					puts("ZMQ server sent mismatching msg type of worker for us!");
+					continue;
+				}
+
+				lastHBRecv = std::chrono::high_resolution_clock::now();
+
+				if (frame.control == ControlMessage::DATA_MSG) {
+					std::lock_guard<std::mutex> cbLock(callbackMutex);
+					if (this->callback) {
+						this->callback(VRayMessage(payloadMsg), this);
+					}
+				} else if (frame.control == ControlMessage::PING_MSG) {
+					if (payloadMsg.size() != 0) {
+						puts("ZMQ missing empty frame after ping");
+					}
+				} else if (frame.control == ControlMessage::PONG_MSG) {
+					if (payloadMsg.size() != 0) {
+						puts("ZMQ missing empty frame after pong");
+					}
+				}
+
+				int more = 0;
+				size_t more_size = sizeof (more);
+				try {
+					frontend->getsockopt(ZMQ_RCVMORE, &more, &more_size);
+				} catch (zmq::error_t & ex) {
+					printf("ZMQ failed [%s] zmq::socket_t::getsockopt.\n", ex.what());
+				}
+				if (!more) {
 					break;
 				}
 			}
+		}
 
-			if (this->messageQue.size() && this->frontend->connected()) {
-				didSomeWork = didSomeWork || this->workerSendoutMessages(lastHBSend);
-			}
-
-			zmq::message_t incoming, e;
-			if (this->frontend->recv(&e, ZMQ_NOBLOCK)) {
-				assert(!e.size() && "No empty frame expected from server!");
-				this->frontend->recv(&incoming);
-				didSomeWork = true;
-
-				if (incoming.size() == sizeof(ClientType)) {
-					lastHBRecv = now;
-				} else if (incoming.size() > sizeof(ClientType)) {
-					std::lock_guard<std::mutex> cbLock(callbackMutex);
-					if (this->callback) {
-						this->callback(VRayMessage(incoming), this);
+		if (pollContext.revents & ZMQ_POLLOUT) {
+			try {
+				now = std::chrono::high_resolution_clock::now();
+				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBSend).count() > pingTimeout / 2) {
+					bool sent = frontend->send(ControlFrame::make(clientType, ControlMessage::PING_MSG), ZMQ_SNDMORE);
+					if (sent) {
+						sent = frontend->send(emtpyFrame);
+						lastHBSend = now;
+						didWork = true;
 					}
-				} else {
-					puts("ZMQ unrecognized server message, discarding...");
 				}
-			}
 
-			if (!didSomeWork) {
-				// if we didn't do anything - just sleep and dont busy wait
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				didWork = didWork || !messageQue.empty();
+				workerSendoutMessages(lastHBSend);
+			} catch (zmq::error_t & ex) {
+				printf("ZMQ failed [%s] zmq::socket_t::send - stopping client.\n", ex.what());
+				return;
 			}
 		}
-	} catch (zmq::error_t & e) {
-		printf("ZMQ exception in worker thread: %s", e.what());
-		this->flushOnExit = false;
-		assert(false && "Zmq exception!");
+
+		if (clientType == ClientType::Heartbeat && std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > pingTimeout) {
+			puts("ZMQ server unresponsive, stopping client");
+			return;
+		}
+
+		if (!didWork) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
 	}
+
 
 	if (this->flushOnExit) {
 		try {
@@ -239,61 +392,44 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 
 			for (int c = 0; c < this->messageQue.size(); ++c) {
 				auto & msg = this->messageQue[c].getMessage();
-
-				if (!this->frontend->send(emptyFrame, ZMQ_SNDMORE)) {
-					break;
-				}
-
-				if (!this->frontend->send(msg)) {
+				bool sent = frontend->send(ControlFrame::make(), ZMQ_SNDMORE);
+				sent = sent && this->frontend->send(msg);
+				if (!sent) {
 					break;
 				}
 			}
 
 			this->frontend->close();
 		} catch (zmq::error_t &e) {
-			printf("ZMQ exception while flushing on exit: %s", e.what());
+			printf("ZMQ exception while flushing on exit: %s\n", e.what());
 		}
 	}
-
-	this->isWorking = false;
 }
 
 inline bool ZmqWrapper::workerSendoutMessages(time_point & lastHBSend) {
 	bool didWork = false;
-	zmq::message_t emptyFrame(0);
-	for (int c = 0; c < MAX_CONSEQ_MESSAGES && !this->messageQue.empty(); ++c) {
+	for (int c = 0; c < MAX_CONSEQ_MESSAGES && !this->messageQue.empty() && isWorking; ++c) {
 		didWork = true;
 		std::lock_guard<std::mutex> lock(this->messageMutex);
 		auto & msg = this->messageQue.front().getMessage();
 
-		// since the wrapper is relying on msg size of sizeof(clientType) to ping wrap(pad so parsing is not broken)
-		// user messages that are with size sizeof(clientType) or less.
-		// since messages are wrapped in VRayMessage user does/should not rely on the actual message size for anything
-		if (msg.size() <= sizeof(clientType)) {
-			zmq::message_t wrapper(sizeof(clientType) + 1);
-			memcpy(wrapper.data(), msg.data(), msg.size());
-			msg.move(&wrapper);
-		}
+		bool sent = frontend->send(ControlFrame::make(ClientType::Exporter, ControlMessage::DATA_MSG), ZMQ_SNDMORE);
+		if (sent) {
+			sent = frontend->send(msg);
+			// update hb send since we sent a message
+			lastHBSend = std::chrono::high_resolution_clock::now();
+			this->messageQue.pop_front();
 
-		int wait = 200;
-		this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
-		if (!this->frontend->send(emptyFrame, ZMQ_SNDMORE)) {
+			int more = 0;
+			size_t more_size = sizeof (more);
+			frontend->getsockopt(ZMQ_RCVMORE, &more, &more_size);
+			if (!more) {
+				break;
+			}
+		} else {
 			break;
 		}
-		wait = -1;
-		this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
 
-
-		try {
-			this->frontend->send(msg);
-		} catch (zmq::error_t & e) {
-			printf("ZMQ exception while zmq send: %s", e.what());
-			assert(false && "Failed to send payload after empty frame && exception");
-		}
-
-		// update hb send since we sent a message
-		lastHBSend = std::chrono::high_resolution_clock::now();
-		this->messageQue.pop_front();
 	}
 
 	return didWork;
@@ -309,7 +445,7 @@ inline void ZmqWrapper::connect(const char * addr) {
 	try {
 		this->frontend->connect(addr);
 	} catch (zmq::error_t & e) {
-		printf("ZMQ::connect(%s) exception: %s", addr, e.what());
+		printf("ZMQ zmq::socket_t::connect(%s) exception: %s\n", addr, e.what());
 		this->errorConnect = true;
 	}
 
@@ -333,12 +469,18 @@ inline bool ZmqWrapper::good() const {
 }
 
 inline void ZmqWrapper::syncStop() {
-	this->isWorking = false;
-	this->startServing = true;
-	if (this->worker.joinable()) {
-		this->worker.join();
+	{
+		std::lock_guard<std::mutex> lock(startServingMutex);
+		isWorking = false;
+		startServing = true;
+		startServingCond.notify_all();
 	}
-	this->worker = std::thread();
+
+	context.close();
+	if (worker.joinable()) {
+		worker.join();
+	}
+	worker = std::thread();
 }
 
 inline ZmqWrapper::~ZmqWrapper() {
