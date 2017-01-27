@@ -113,7 +113,9 @@ public:
 	enum class RendererState {
 		None,
 		Abort,
-		Continue
+		Continue,
+		Progress,
+		ProgressMessage,
 	};
 
 	VRayMessage(zmq::message_t &message)
