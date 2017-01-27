@@ -78,7 +78,6 @@ public:
 		Pause,
 		Resume,
 		Resize,
-		Commit,
 		SetOnBucketReady,
 		_ArgumentRenderAction,
 		AddHosts,
@@ -138,12 +137,17 @@ public:
 	    , rendererType(other.rendererType)
 	    , rendererState(other.rendererState)
 	    , valueType(other.valueType)
-	    , valueSetter(ValueSetter::None)
+	    , valueSetter(other.valueSetter)
 	    , pluginAction(other.pluginAction)
 	    , pluginName(std::move(other.pluginName))
 	    , pluginProperty(std::move(other.pluginProperty))
 	{
 		this->message.move(&other.message);
+		if (valueType != VRayBaseTypes::ValueTypeUnknown) {
+			memcpy(value_data, other.value_data, MAX_MESSAGE_SIZE);
+			other.valueType = VRayBaseTypes::ValueTypeUnknown;
+			memset(other.value_data, 0, MAX_MESSAGE_SIZE);
+		}
 	}
 
 	VRayMessage(size_t size)
