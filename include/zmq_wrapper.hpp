@@ -85,12 +85,12 @@ struct ControlFrame {
 
 
 /// Async wrapper for zmq::socket_t with callback on data received.
-class ZmqWrapper {
+class ZmqClient {
 public:
-	typedef std::function<void(const VRayMessage &, ZmqWrapper *)> ZmqWrapperCallback_t;
+	typedef std::function<void(const VRayMessage &, ZmqClient *)> ZmqOnMessageCallback;
 
-	ZmqWrapper(bool isHeatbeat = false);
-	~ZmqWrapper();
+	ZmqClient(bool isHeatbeat = false);
+	~ZmqClient();
 
 	/// Send data with size, the data will be copied inside and can be safely freed after the function returns
 	/// @data - pointer to bytes
@@ -102,7 +102,7 @@ public:
 	void send(VRayMessage && message);
 
 	/// Set a callback to be called on message received (messages discarded if not set)
-	void setCallback(ZmqWrapperCallback_t cb);
+	void setCallback(ZmqOnMessageCallback cb);
 
 	/// Set or clear flag to flush outstanding messages on stop/exit
 	void setFlushOnExit(bool flag);
@@ -136,7 +136,7 @@ private:
 	bool workerSendoutMessages(time_point & lastHBSend);
 
 	const ClientType clientType; ///< The type of this client (heartbeat or exporter)
-	ZmqWrapperCallback_t callback; ///< Callback to be called on received message
+	ZmqOnMessageCallback callback; ///< Callback to be called on received message
 	std::mutex callbackMutex; ///< Mutex protecting @callback
 
 	std::thread worker; ///< Thread serving messages and calling the callback
@@ -158,7 +158,7 @@ private:
 };
 
 
-inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
+inline ZmqClient::ZmqClient(bool isHeartbeat)
     : clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
     , context(1)
     , isWorking(true)
@@ -172,7 +172,7 @@ inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 	std::condition_variable threadReady;
 	std::mutex threadMutex;
 
-	worker = std::thread(&ZmqWrapper::workerThread, this, std::ref(socketInit), std::ref(threadMutex), std::ref(threadReady));
+	worker = std::thread(&ZmqClient::workerThread, this, std::ref(socketInit), std::ref(threadMutex), std::ref(threadReady));
 
 	{
 		std::unique_lock<std::mutex> lock(threadMutex);
@@ -181,7 +181,7 @@ inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
 	}
 }
 
-inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mtx, std::condition_variable & workerReady) {
+inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx, std::condition_variable & workerReady) {
 	try {
 
 		this->frontend = std::unique_ptr<zmq::socket_t>(new zmq::socket_t(context, ZMQ_DEALER));
@@ -401,7 +401,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 	}
 }
 
-inline bool ZmqWrapper::workerSendoutMessages(time_point & lastHBSend) {
+inline bool ZmqClient::workerSendoutMessages(time_point & lastHBSend) {
 	bool didWork = false;
 	for (int c = 0; c < MAX_CONSEQ_MESSAGES && !this->messageQue.empty() && isWorking; ++c) {
 		didWork = true;
@@ -430,7 +430,7 @@ inline bool ZmqWrapper::workerSendoutMessages(time_point & lastHBSend) {
 	return didWork;
 }
 
-inline void ZmqWrapper::connect(const char * addr) {
+inline void ZmqClient::connect(const char * addr) {
 	std::random_device device;
 	std::mt19937_64 generator(device());
 	uint64_t id = generator();
@@ -451,19 +451,19 @@ inline void ZmqWrapper::connect(const char * addr) {
 	startServingCond.notify_one();
 }
 
-inline int ZmqWrapper::getOutstandingMessages() const {
+inline int ZmqClient::getOutstandingMessages() const {
 	return this->messageQue.size();
 }
 
-inline bool ZmqWrapper::connected() const {
+inline bool ZmqClient::connected() const {
 	return this->startServing && !this->errorConnect;
 }
 
-inline bool ZmqWrapper::good() const {
+inline bool ZmqClient::good() const {
 	return this->isWorking;
 }
 
-inline void ZmqWrapper::syncStop() {
+inline void ZmqClient::syncStop() {
 	{
 		std::lock_guard<std::mutex> lock(startServingMutex);
 		isWorking = false;
@@ -478,29 +478,29 @@ inline void ZmqWrapper::syncStop() {
 	worker = std::thread();
 }
 
-inline ZmqWrapper::~ZmqWrapper() {
+inline ZmqClient::~ZmqClient() {
 	this->syncStop();
 }
 
-inline void ZmqWrapper::setFlushOnExit(bool flag) {
+inline void ZmqClient::setFlushOnExit(bool flag) {
 	flushOnExit = flag;
 }
 
-inline bool ZmqWrapper::getFlushOnexit() const {
+inline bool ZmqClient::getFlushOnexit() const {
 	return flushOnExit;
 }
 
-inline void ZmqWrapper::setCallback(ZmqWrapperCallback_t cb) {
+inline void ZmqClient::setCallback(ZmqOnMessageCallback cb) {
 	std::lock_guard<std::mutex> cbLock(callbackMutex);
 	this->callback = cb;
 }
 
-inline void ZmqWrapper::send(VRayMessage && message) {
+inline void ZmqClient::send(VRayMessage && message) {
 	std::lock_guard<std::mutex> lock(this->messageMutex);
 	this->messageQue.push_back(std::move(message));
 }
 
-inline void ZmqWrapper::send(void * data, int size) {
+inline void ZmqClient::send(void * data, int size) {
 	VRayMessage msg(size);
 	memcpy(msg.getMessage().data(), data, size);
 
