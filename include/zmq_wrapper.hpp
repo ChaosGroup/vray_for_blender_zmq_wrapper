@@ -20,12 +20,14 @@
 #include "base_types.h"
 #include "zmq_message.hpp"
 
+static const int CLIENT_PING_INTERVAL = 1000;
+
 #ifdef _DEBUG
 static const int EXPORTER_TIMEOUT = 1 << 29;
 static const int HEARBEAT_TIMEOUT = 1 << 29;
 #else
-static const int EXPORTER_TIMEOUT = 5000;
-static const int HEARBEAT_TIMEOUT = 2000;
+static const int EXPORTER_TIMEOUT = HEARTBEAT_PING_INTERVAL * 5;
+static const int HEARBEAT_TIMEOUT = HEARTBEAT_PING_INTERVAL * 2;
 #endif
 
 static const int MAX_CONSEQ_MESSAGES = 10;
@@ -148,7 +150,6 @@ private:
 	bool startServing; ///< Used to signal worker, the socket is connected and serving can start
 
 	time_point lastHeartbeat; ///< Last time hartbeat was sent/received
-	uint64_t pingTimeout; ///< Timeout for pings, if no answer worker stops serving
 
 	bool isWorking; ///< Flag set to true if the thread is serving requests
 	bool errorConnect; ///< Flag set to true if we could not connect
@@ -166,18 +167,6 @@ inline ZmqWrapper::ZmqWrapper(bool isHeartbeat)
     , flushOnExit(false)
     , frontend(nullptr)
 {
-	// send keepalive
-	switch (clientType) {
-	case ClientType::Heartbeat:
-		pingTimeout = HEARBEAT_TIMEOUT;
-		break;
-	case ClientType::Exporter:
-		pingTimeout = EXPORTER_TIMEOUT;
-		break;
-	default:
-		pingTimeout = std::numeric_limits<uint64_t>::max();
-	}
-
 
 	bool socketInit = false;
 	std::condition_variable threadReady;
@@ -362,7 +351,8 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		if (pollContext.revents & ZMQ_POLLOUT) {
 			try {
 				now = std::chrono::high_resolution_clock::now();
-				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBSend).count() > pingTimeout / 2) {
+				// we havent sent messages in a while - ping server
+				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBSend).count() > CLIENT_PING_INTERVAL) {
 					bool sent = frontend->send(ControlFrame::make(clientType, ControlMessage::PING_MSG), ZMQ_SNDMORE);
 					if (sent) {
 						sent = frontend->send(emtpyFrame);
@@ -379,7 +369,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 			}
 		}
 
-		if (clientType == ClientType::Heartbeat && std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > pingTimeout) {
+		if (clientType == ClientType::Heartbeat && std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBRecv).count() > HEARBEAT_TIMEOUT) {
 			puts("ZMQ server unresponsive, stopping client");
 			return;
 		}
@@ -388,7 +378,6 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 	}
-
 
 	if (this->flushOnExit) {
 		try {
