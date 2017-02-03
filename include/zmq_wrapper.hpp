@@ -20,8 +20,14 @@
 #include "base_types.h"
 #include "zmq_message.hpp"
 
+#ifdef _DEBUG
+static const int EXPORTER_TIMEOUT = 1 << 29;
+static const int HEARBEAT_TIMEOUT = 1 << 29;
+#else
 static const int EXPORTER_TIMEOUT = 5000;
 static const int HEARBEAT_TIMEOUT = 2000;
+#endif
+
 static const int MAX_CONSEQ_MESSAGES = 10;
 
 enum class ClientType: int {
@@ -193,7 +199,7 @@ inline void ZmqWrapper::workerThread(volatile bool & socketInit, std::mutex & mt
 		int linger = 0;
 		this->frontend->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
 
-		int wait = HEARBEAT_TIMEOUT / 2;
+		int wait = HEARBEAT_TIMEOUT;
 		this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
 
 		std::lock_guard<std::mutex> lock(mtx);
