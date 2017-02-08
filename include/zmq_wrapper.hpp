@@ -26,8 +26,8 @@ static const int CLIENT_PING_INTERVAL = 1000;
 static const int EXPORTER_TIMEOUT = 1 << 29;
 static const int HEARBEAT_TIMEOUT = 1 << 29;
 #else
-static const int EXPORTER_TIMEOUT = HEARTBEAT_PING_INTERVAL * 5;
-static const int HEARBEAT_TIMEOUT = HEARTBEAT_PING_INTERVAL * 2;
+static const int EXPORTER_TIMEOUT = CLIENT_PING_INTERVAL * 5;
+static const int HEARBEAT_TIMEOUT = CLIENT_PING_INTERVAL * 2;
 #endif
 
 static const int MAX_CONSEQ_MESSAGES = 10;
