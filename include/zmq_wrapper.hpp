@@ -49,9 +49,11 @@ enum class ControlMessage: int {
 
 	PING_MSG = 3000,
 	PONG_MSG = 3001,
+
+	STOP_MSG = 4000,
 };
 
-static const int ZMQ_PROTOCOL_VERSION = 1000;
+static const int ZMQ_PROTOCOL_VERSION = 1001;
 
 struct ControlFrame {
 	int version;
@@ -122,6 +124,9 @@ public:
 	/// @addr - the address to connect to
 	void connect(const char * addr);
 
+	/// Send 'stop' command to server as soon as possible
+	void stopServer();
+
 	/// Stop the server waiting for the worker thread to join
 	void syncStop();
 
@@ -147,13 +152,14 @@ private:
 
 	std::condition_variable startServingCond; ///< Cond var to signal the worker thread to start serving
 	std::mutex startServingMutex; ///< Mutex protecting @startServing flag
-	bool startServing; ///< Used to signal worker, the socket is connected and serving can start
-
 	time_point lastHeartbeat; ///< Last time hartbeat was sent/received
 
-	bool isWorking; ///< Flag set to true if the thread is serving requests
-	bool errorConnect; ///< Flag set to true if we could not connect
-	bool flushOnExit; ///< If true when worker is stopping for any reason, outstanding messages will be sent
+	bool startServing : 1; ///< Used to signal worker, the socket is connected and serving can start
+	bool isWorking    : 1; ///< Flag set to true if the thread is serving requests
+	bool errorConnect : 1; ///< Flag set to true if we could not connect
+	bool flushOnExit  : 1; ///< If true when worker is stopping for any reason, outstanding messages will be sent
+	bool serverStop   : 1; ///< If true will stop transmitting messages and send 'stop' command to server
+
 	std::unique_ptr<zmq::socket_t> frontend; ///< The zmq socket
 };
 
@@ -165,6 +171,7 @@ inline ZmqClient::ZmqClient(bool isHeartbeat)
     , errorConnect(false)
     , startServing(false)
     , flushOnExit(false)
+	, serverStop(false)
     , frontend(nullptr)
 {
 
@@ -217,7 +224,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 		return;
 	}
 
-	zmq::message_t emtpyFrame(0);
+	zmq::message_t emptyFrame(0);
 
 	// send handshake
 	try {
@@ -226,7 +233,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 		} else {
 			frontend->send(ControlFrame::make(clientType, ControlMessage::HEARTBEAT_CONNECT_MSG), ZMQ_SNDMORE);
 		}
-		this->frontend->send(emtpyFrame);
+		this->frontend->send(emptyFrame);
 	} catch (zmq::error_t & ex) {
 		printf("ZMQ failed to send handshake [%s]\n", ex.what());
 		return;
@@ -355,7 +362,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 				if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastHBSend).count() > CLIENT_PING_INTERVAL) {
 					bool sent = frontend->send(ControlFrame::make(clientType, ControlMessage::PING_MSG), ZMQ_SNDMORE);
 					if (sent) {
-						sent = frontend->send(emtpyFrame);
+						sent = frontend->send(emptyFrame);
 						lastHBSend = now;
 						didWork = true;
 					}
@@ -379,7 +386,17 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 		}
 	}
 
-	if (this->flushOnExit) {
+	if (serverStop) {
+		try {
+			int wait = 200;
+			frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
+			frontend->send(ControlFrame::make(clientType, ControlMessage::STOP_MSG), ZMQ_SNDMORE);
+			frontend->send(emptyFrame);
+			serverStop = false;
+		} catch (zmq::error_t & ex) {
+			printf("ZMQ exception while stopping server: %s\n", ex.what());
+		}
+	} else if (flushOnExit) {
 		try {
 			int wait = 200;
 			this->frontend->setsockopt(ZMQ_SNDTIMEO, &wait, sizeof(wait));
@@ -395,8 +412,8 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 			}
 
 			this->frontend->close();
-		} catch (zmq::error_t &e) {
-			printf("ZMQ exception while flushing on exit: %s\n", e.what());
+		} catch (zmq::error_t & ex) {
+			printf("ZMQ exception while flushing on exit: %s\n", ex.what());
 		}
 	}
 }
@@ -463,7 +480,24 @@ inline bool ZmqClient::good() const {
 	return this->isWorking;
 }
 
+inline void ZmqClient::stopServer() {
+	serverStop = true;
+	isWorking = false;
+}
+
 inline void ZmqClient::syncStop() {
+	using namespace std::chrono;
+	if (serverStop) {
+		// give chance for worker to send stop message
+		auto stopBegin = high_resolution_clock::now();
+		while (serverStop) {
+			if (duration_cast<milliseconds>(high_resolution_clock::now() - stopBegin).count() > 200) {
+				break;
+			}
+			std::this_thread::sleep_for(milliseconds(1));
+		}
+	}
+
 	{
 		std::lock_guard<std::mutex> lock(startServingMutex);
 		isWorking = false;
