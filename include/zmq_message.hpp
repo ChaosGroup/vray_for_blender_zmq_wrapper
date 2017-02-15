@@ -88,6 +88,7 @@ public:
 		SetRenderMode,
 		SetAnimationProperties,
 		SetCurrentTime,
+		SetCurrentFrame,
 		ClearFrameValues,
 		SetRendererState,
 		SetRendererType,

@@ -33,6 +33,7 @@ const int VectorBytesCount  = 3 * sizeof(float);
 const int Vector2BytesCount = 2 * sizeof(float);
 
 enum CommitAction {
+	CommitNone,
 	CommitNow,
 	CommitNowForce,
 	CommitAutoOff,
