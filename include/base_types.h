@@ -454,6 +454,16 @@ struct AttrTransform {
 	    offs(tm[3])
 	{}
 
+	static AttrTransform identity() {
+		static float tm[4][4] = {
+			{1, 0, 0, 0},
+			{0, 1, 0, 0},
+			{0, 0, 1, 0},
+			{0, 0, 0, 1},
+		};
+		return AttrTransform(tm);
+	}
+
 	AttrMatrix m;
 	AttrVector offs;
 };
