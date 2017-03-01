@@ -21,6 +21,7 @@
 #include "zmq_message.hpp"
 
 static const int CLIENT_PING_INTERVAL = 1000;
+static const int SOCKET_IO_TIMEOUT = 100;
 
 #ifdef _DEBUG
 static const int EXPORTER_TIMEOUT = 1 << 29;
