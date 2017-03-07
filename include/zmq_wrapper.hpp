@@ -54,7 +54,7 @@ enum class ControlMessage: int {
 	STOP_MSG = 4000,
 };
 
-static const int ZMQ_PROTOCOL_VERSION = 1001;
+static const int ZMQ_PROTOCOL_VERSION = 1010;
 
 struct ControlFrame {
 	int version;
