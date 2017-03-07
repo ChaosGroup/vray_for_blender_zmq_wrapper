@@ -25,6 +25,26 @@
 #include <cstring>
 #include <unordered_map>
 #include <memory>
+#include <cassert>
+
+// Compile time max(A, B)
+template <size_t A, size_t B>
+struct compile_time_max {
+	enum { value = (A > B ? A : B) };
+};
+
+// recursive template for max of variable number of template arguments
+// general case - max of sizeof of the first type and recursive call for the rest
+template <typename T, typename ... Q>
+struct max_type_sizeof {
+	enum { value = compile_time_max<sizeof(T), max_type_sizeof<Q...>::value>::value };
+};
+
+// base case for just 2 types
+template <typename T, typename Q>
+struct max_type_sizeof<T, Q> {
+	enum { value = compile_time_max<sizeof(T), sizeof(Q)>::value };
+};
 
 
 namespace VRayBaseTypes {
@@ -128,7 +148,7 @@ enum ValueType {
 	ValueTypeString,
 	ValueTypePlugin,
 
-	ValueTypeImage,
+	ValueTypeImageSet,
 
 	ValueTypeList,
 
@@ -152,10 +172,18 @@ enum ValueType {
 template <typename T>
 struct AttrSimpleType {
 	ValueType getType() const;
-	AttrSimpleType(): m_Value() {}
-	AttrSimpleType(const T & val): m_Value(val) {}
+	AttrSimpleType(): value() {}
+	AttrSimpleType(const T & val): value(val) {}
 
-	T m_Value;
+	operator const T & () const {
+		return value;
+	}
+
+	operator T & () {
+		return value;
+	}
+
+	T value;
 };
 
 template <>
@@ -242,17 +270,13 @@ struct AttrImage {
 		::memcpy(this->data.get(), data, size);
 	}
 
-	std::unique_ptr<char[]> data; ///< Image bytes data
+	std::shared_ptr<char> data; ///< Image bytes data
 	size_t size; ///< Size in bytes
 	int width; ///< Width in pixels
 	int height; ///< Height in pixels
 	int x; ///< if positive - X of top left corner of bucket sub image, else negative for full
 	int y; ///< if positive - Y of top left corner of bucket sub image, else negative for full
 	ImageType imageType; ///< The format of the image data (JPG, RGBA, etc.)
-
-private:
-	AttrImage(const AttrImage&) = delete;
-	AttrImage& operator=(const AttrImage&) = delete;
 };
 
 enum ImageSourceType {
@@ -264,7 +288,7 @@ enum ImageSourceType {
 
 struct AttrImageSet {
 	ValueType getType() const {
-		return ValueType::ValueTypeImage;
+		return ValueType::ValueTypeImageSet;
 	}
 
 	AttrImageSet(ImageSourceType sourceType = ImageSourceInvalid): sourceType(sourceType) {}
@@ -274,9 +298,6 @@ struct AttrImageSet {
 
 	std::unordered_map<RenderChannelType, AttrImage, std::hash<int>> images;
 	ImageSourceType sourceType;
-private:
-	AttrImageSet(const AttrImageSet&) = delete;
-	AttrImageSet& operator=(const AttrImageSet&) = delete;
 };
 
 
@@ -565,13 +586,15 @@ private:
 	DataArray m_Ptr;
 };
 
-typedef AttrList<int>         AttrListInt;
-typedef AttrList<float>       AttrListFloat;
-typedef AttrList<AttrColor>   AttrListColor;
-typedef AttrList<AttrVector>  AttrListVector;
-typedef AttrList<AttrVector2> AttrListVector2;
-typedef AttrList<AttrPlugin>  AttrListPlugin;
-typedef AttrList<std::string> AttrListString;
+typedef AttrList<int>           AttrListInt;
+typedef AttrList<float>         AttrListFloat;
+typedef AttrList<AttrColor>     AttrListColor;
+typedef AttrList<AttrVector>    AttrListVector;
+typedef AttrList<AttrVector2>   AttrListVector2;
+typedef AttrList<AttrPlugin>    AttrListPlugin;
+typedef AttrList<std::string>   AttrListString;
+typedef AttrList<AttrMatrix>    AttrListMatrix;
+typedef AttrList<AttrTransform> AttrListTransform;
 
 
 template <>
@@ -607,6 +630,16 @@ inline ValueType AttrListPlugin::getType() const {
 template <>
 inline ValueType AttrListString::getType() const {
 	return ValueType::ValueTypeListString;
+}
+
+template <>
+inline ValueType AttrListMatrix::getType() const {
+	return ValueType::ValueTypeListMatrix;
+}
+
+template <>
+inline ValueType AttrListTransform::getType() const {
+	return ValueType::ValueTypeListTransform;
 }
 
 
@@ -645,147 +678,177 @@ struct AttrInstancer {
 	Items data;
 };
 
-struct AttrValue {
-	typedef AttrList<AttrValue> AttrListValue;
+const int ATTR_DATA_SIZE = max_type_sizeof<
+AttrColor,
+AttrAColor,
+AttrVector,
+AttrVector2,
+AttrMatrix,
+AttrTransform,
+AttrPlugin,
+AttrList<int>, // all lists have same sizeof
+AttrMapChannels,
+AttrInstancer,
+AttrImage,
+AttrImageSet,
+AttrSimpleType<int>,
+AttrSimpleType<float>,
+AttrSimpleType<double>,
+AttrSimpleType<std::string>>::value;
 
+struct AttrValue;
+typedef AttrList<AttrValue> AttrListValue;
+
+
+struct AttrValue {
 	AttrValue():
 		type(ValueTypeUnknown) {}
 
-	AttrValue(const AttrValue &other) {
-		*this = other;
+	template <typename T>
+	AttrValue(const T & attrValue) {
+		new(asPtr<T>())T(attrValue); // ctor on memmory
+		type = as<T>().getType();
 	}
 
-	AttrValue(const std::string &attrValue) {
+	AttrValue(const std::string & attrValue) {
 		type = ValueTypeString;
-		valString = attrValue;
+		new(asPtr<AttrSimpleType<std::string>>())AttrSimpleType<std::string>(attrValue);
 	}
 
-	AttrValue(const char *attrValue) {
+	AttrValue(const char * attrValue) {
 		type = ValueTypeString;
-		valString = attrValue;
+		new(asPtr<AttrSimpleType<std::string>>())AttrSimpleType<std::string>(attrValue ? attrValue : "");
 	}
 
-	AttrValue(const AttrPlugin &attrValue) {
-		type = ValueTypePlugin;
-		valPlugin = attrValue;
-	}
-
-	AttrValue(const AttrPlugin &attrValue, const std::string &output) {
-		type = ValueTypePlugin;
-		valPlugin = attrValue;
-		valPlugin.output = output;
-	}
-
-	AttrValue(const AttrColor &c) {
-		type = ValueTypeColor;
-		valColor = c;
-	}
-
-	AttrValue(const AttrAColor &ac) {
-		type = ValueTypeAColor;
-		valAColor = ac;
-	}
-
-	AttrValue(const AttrVector &v) {
-		type = ValueTypeVector;
-		valVector = v;
-	}
-
-	AttrValue(const AttrMatrix &m) {
-		type = ValueTypeMatrix;
-		valMatrix = m;
-	}
-
-	AttrValue(const AttrTransform &attrValue) {
-		type = ValueTypeTransform;
-		valTransform = attrValue;
-	}
-
-	AttrValue(const int &attrValue) {
+	AttrValue(const int & attrValue) {
 		type = ValueTypeInt;
-		valInt = attrValue;
+		new(asPtr<AttrSimpleType<int>>())AttrSimpleType<int>(attrValue);
 	}
 
-	AttrValue(const bool &attrValue) {
+	AttrValue(const bool & attrValue) {
 		type = ValueTypeInt;
-		valInt = attrValue;
+		new(asPtr<AttrSimpleType<int>>())AttrSimpleType<int>(attrValue);
 	}
 
-	AttrValue(const float &attrValue) {
+	AttrValue(const float & attrValue) {
 		type = ValueTypeFloat;
-		valFloat = attrValue;
+		new(asPtr<AttrSimpleType<float>>())AttrSimpleType<float>(attrValue);
 	}
 
-	AttrValue(const AttrListInt &attrValue) {
-		type = ValueTypeListInt;
-		valListInt = attrValue;
+	ValueType getType() const {
+		return type;
 	}
 
-	AttrValue(const AttrListFloat &attrValue) {
-		type = ValueTypeListFloat;
-		valListFloat = attrValue;
+	template <typename T>
+	T * asPtr() {
+		return reinterpret_cast<T*>(data);
 	}
 
-	AttrValue(const AttrListVector &attrValue) {
-		type = ValueTypeListVector;
-		valListVector = attrValue;
+	template <typename T>
+	const T * asPtr() const {
+		return reinterpret_cast<const T*>(data);
 	}
 
-	AttrValue(const AttrListColor &attrValue) {
-		type = ValueTypeListColor;
-		valListColor = attrValue;
+	template <typename T>
+	T & as() {
+		return *asPtr<T>();
 	}
 
-	AttrValue(const AttrListPlugin &attrValue) {
-		type = ValueTypeListPlugin;
-		valListPlugin = attrValue;
+	template <typename T>
+	const T & as() const {
+		return *asPtr<T>();
 	}
 
-	AttrValue(const AttrListValue &attrValue) {
-		type = ValueTypeListValue;
-		valListValue = attrValue;
+	template <typename T>
+	T convertTo() const {
+		return *reinterpret_cast<T*>(data);
 	}
 
-	AttrValue(const AttrListString &attrValue) {
-		type = ValueTypeListString;
-		valListString = attrValue;
+	AttrValue & operator=(const AttrValue & o) {
+		if (this != & o) {
+			destroyData();
+			copyInitData(o);
+		}
+		return *this;
 	}
 
-	AttrValue(const AttrMapChannels &attrValue) {
-		type = ValueTypeMapChannels;
-		valMapChannels = attrValue;
-	}
-	AttrValue(const AttrInstancer &attrValue) {
-		type = ValueTypeInstancer;
-		valInstancer = attrValue;
+	AttrValue(const AttrValue & o) {
+		copyInitData(o);
 	}
 
-	// TODO: Replace with single storage with reinterpret_cast<>
-	int                 valInt;
-	float               valFloat;
-	AttrVector          valVector;
-	AttrColor           valColor;
-	AttrAColor          valAColor;
+	void defaultInitData() {
+		assert(type != ValueTypeUnknown && "Cannot default init unknown type!");
+		switch(type) {
+		case ValueTypeString:        new(asPtr<AttrSimpleType<std::string>>())AttrSimpleType<std::string>(); break;
+		case ValueTypePlugin:        new(asPtr<AttrPlugin>())AttrPlugin(); break;
+		case ValueTypeListInt:       new(asPtr<AttrListInt>())AttrListInt(); break;
+		case ValueTypeListFloat:     new(asPtr<AttrListFloat>())AttrListFloat(); break;
+		case ValueTypeListColor:     new(asPtr<AttrListColor>())AttrListColor(); break;
+		case ValueTypeListVector:    new(asPtr<AttrListVector>())AttrListVector(); break;
+		case ValueTypeListVector2:   new(asPtr<AttrListVector2>())AttrListVector2(); break;
+		case ValueTypeListMatrix:    new(asPtr<AttrListMatrix>())AttrListMatrix(); break;
+		case ValueTypeListTransform: new(asPtr<AttrListTransform>())AttrListTransform(); break;
+		case ValueTypeListString:    new(asPtr<AttrListString>())AttrListString(); break;
+		case ValueTypeListPlugin:    new(asPtr<AttrListPlugin>())AttrListPlugin(); break;
+		case ValueTypeListValue:     new(asPtr<AttrListValue>())AttrListValue(); break;
+		case ValueTypeInstancer:     new(asPtr<AttrInstancer>())AttrInstancer(); break;
+		case ValueTypeMapChannels:   new(asPtr<AttrMapChannels>())AttrMapChannels(); break;
+		case ValueTypeImageSet:      new(asPtr<AttrImageSet>())AttrImageSet(); break;
+		default: memset(data, 0, ATTR_DATA_SIZE); break;
+		}
+	}
 
-	std::string         valString;
+	void copyInitData(const AttrValue & other) {
+		type = other.type;
+		switch(other.type) {
+		case ValueTypeString:        new(asPtr<AttrSimpleType<std::string>>())AttrSimpleType<std::string>(other.as<AttrSimpleType<std::string>>()); break;
+		case ValueTypePlugin:        new(asPtr<AttrPlugin>())AttrPlugin(other.as<AttrPlugin>()); break;
+		case ValueTypeListInt:       new(asPtr<AttrListInt>())AttrListInt(other.as<AttrListInt>()); break;
+		case ValueTypeListFloat:     new(asPtr<AttrListFloat>())AttrListFloat(other.as<AttrListFloat>()); break;
+		case ValueTypeListColor:     new(asPtr<AttrListColor>())AttrListColor(other.as<AttrListColor>()); break;
+		case ValueTypeListVector:    new(asPtr<AttrListVector>())AttrListVector(other.as<AttrListVector>()); break;
+		case ValueTypeListVector2:   new(asPtr<AttrListVector2>())AttrListVector2(other.as<AttrListVector2>()); break;
+		case ValueTypeListMatrix:    new(asPtr<AttrListMatrix>())AttrListMatrix(other.as<AttrListMatrix>()); break;
+		case ValueTypeListTransform: new(asPtr<AttrListTransform>())AttrListTransform(other.as<AttrListTransform>()); break;
+		case ValueTypeListString:    new(asPtr<AttrListString>())AttrListString(other.as<AttrListString>()); break;
+		case ValueTypeListPlugin:    new(asPtr<AttrListPlugin>())AttrListPlugin(other.as<AttrListPlugin>()); break;
+		case ValueTypeListValue:     new(asPtr<AttrListValue>())AttrListValue(other.as<AttrListValue>()); break;
+		case ValueTypeInstancer:     new(asPtr<AttrInstancer>())AttrInstancer(other.as<AttrInstancer>()); break;
+		case ValueTypeMapChannels:   new(asPtr<AttrMapChannels>())AttrMapChannels(other.as<AttrMapChannels>()); break;
+		case ValueTypeImageSet:      new(asPtr<AttrImageSet>())AttrImageSet(other.as<AttrImageSet>()); break;
+		default: memcpy(data, other.data, ATTR_DATA_SIZE); break; // others are POD so we can memcpy
+		}
+	}
 
-	AttrMatrix          valMatrix;
-	AttrTransform       valTransform;
+	void destroyData() {
+		// only ones that need dtor called, make sure to update here if other type needs
+		switch (type) {
+		case ValueTypeString:        as<AttrSimpleType<std::string>>().~AttrSimpleType<std::string>(); break;
+		case ValueTypePlugin:        as<AttrPlugin>().~AttrPlugin(); break;
+		case ValueTypeListInt:       as<AttrListInt>().~AttrListInt(); break;
+		case ValueTypeListFloat:     as<AttrListFloat>().~AttrListFloat(); break;
+		case ValueTypeListColor:     as<AttrListColor>().~AttrListColor(); break;
+		case ValueTypeListVector:    as<AttrListVector>().~AttrListVector(); break;
+		case ValueTypeListVector2:   as<AttrListVector2>().~AttrListVector2(); break;
+		case ValueTypeListMatrix:    as<AttrListMatrix>().~AttrListMatrix(); break;
+		case ValueTypeListTransform: as<AttrListTransform>().~AttrListTransform(); break;
+		case ValueTypeListString:    as<AttrListString>().~AttrListString(); break;
+		case ValueTypeListPlugin:    as<AttrListPlugin>().~AttrListPlugin(); break;
+		case ValueTypeListValue:     as<AttrListValue>().~AttrListValue(); break;
+		case ValueTypeInstancer:     as<AttrInstancer>().~AttrInstancer(); break;
+		case ValueTypeMapChannels:   as<AttrMapChannels>().~AttrMapChannels(); break;
+		default: break; // nothing to do
+		}
+		memset(data, 0, ATTR_DATA_SIZE);
+		type = ValueTypeUnknown;
+	}
 
-	AttrPlugin          valPlugin;
+	~AttrValue() {
+		destroyData();
+	}
 
-	AttrListInt         valListInt;
-	AttrListFloat       valListFloat;
-	AttrListVector      valListVector;
-	AttrListColor       valListColor;
-	AttrListPlugin      valListPlugin;
-	AttrListValue       valListValue;
-	AttrListString      valListString;
-
-	AttrMapChannels     valMapChannels;
-	AttrInstancer       valInstancer;
-
-	ValueType           type;
+	ValueType type;
+	uint8_t data[ATTR_DATA_SIZE];
 
 	const char *getTypeAsString() const {
 		switch (type) {
@@ -819,18 +882,27 @@ struct AttrValue {
 		if (type == ValueTypeUnknown) {
 			valid = false;
 		} else if (type == ValueTypePlugin) {
-			valid = !!(valPlugin);
+			valid = !!(as<AttrPlugin>());
 		}
 		return valid;
 	}
 };
 
-inline AttrPlugin & AttrPlugin::operator = (const AttrValue & val) {
+
+template <>
+inline ValueType AttrListValue::getType() const {
+	return ValueType::ValueTypeListValue;
+}
+
+
+
+inline AttrPlugin & AttrPlugin::operator=(const AttrValue & val) {
 	if (val.type == ValueTypePlugin) {
-		*this = val.valPlugin;
+		*this = val.as<AttrPlugin>();
 	}
 	return *this;
 }
 } // namespace VRayBaseTypes
 
 #endif // VRAY_FOR_BLENDER_BASE_TYPES_H
+

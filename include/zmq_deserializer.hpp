@@ -55,13 +55,14 @@ private:
 	const char *last;
 };
 
+
 template <typename T>
 DeserializerStream & operator>>(DeserializerStream & stream, T & value) {
 	stream.read(reinterpret_cast<char*>(&value), sizeof(value));
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, std::string & value) {
 	size_t size = 0;
 	stream >> size;
@@ -73,13 +74,13 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, std::string 
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrSimpleType<std::string> & value) {
-	stream >> value.m_Value;
+	stream >> value.value;
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>> (DeserializerStream & stream, VRayBaseTypes::AttrPlugin & plugin) {
 	return stream >> plugin.plugin >> plugin.output;
 }
@@ -97,7 +98,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<VRayBaseTypes::AttrPlugin> & list) {
 	list.init();
 	int size = 0;
@@ -110,7 +111,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<std::string> & list) {
 	list.init();
 	int size = 0;
@@ -123,7 +124,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrMapChannels & map) {
 	map.data.clear();
 	int size = 0;
@@ -138,12 +139,11 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 }
 
 
-template <>
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrInstancer::Item & instItem) {
 	return stream >> instItem.index >> instItem.tm >> instItem.vel >> instItem.node;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrInstancer & inst) {
 	int size = 0;
 	stream >> inst.frameNumber >> size;
@@ -156,7 +156,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrImage & image) {
 	stream >> image.imageType >> image.size >> image.width >> image.height >> image.x >> image.y;
 	image.set(stream.getCurrent(), image.size);
@@ -164,7 +164,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 	return stream;
 }
 
-template <>
+
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrImageSet & set) {
 	int count;
 	stream >> set.sourceType >> count;
@@ -177,5 +177,38 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 	return stream;
 }
 
+
+inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrValue & value) {
+	stream >> value.type;
+	value.defaultInitData();
+	using namespace VRayBaseTypes;
+	switch (value.type) {
+	case ValueTypeInt: stream >> value.as<AttrSimpleType<int>>(); break;
+	case ValueTypeFloat: stream >> value.as<AttrSimpleType<float>>(); break;
+	case ValueTypeString: stream >> value.as<AttrSimpleType<std::string>>(); break;
+	case ValueTypeColor: stream >> value.as<AttrColor>(); break;
+	case ValueTypeAColor: stream >> value.as<AttrAColor>(); break;
+	case ValueTypeVector: stream >> value.as<AttrVector>(); break;
+	case ValueTypeVector2: stream >> value.as<AttrVector2>(); break;
+	case ValueTypeMatrix: stream >> value.as<AttrMatrix>(); break;
+	case ValueTypeTransform: stream >> value.as<AttrTransform>(); break;
+	case ValueTypePlugin: stream >> value.as<AttrPlugin>(); break;
+	case ValueTypeImageSet: stream >> value.as<AttrImageSet>(); break;
+	case ValueTypeListInt: stream >> value.as<AttrListInt>(); break;
+	case ValueTypeListFloat: stream >> value.as<AttrListFloat>(); break;
+	case ValueTypeListColor: stream >> value.as<AttrListColor>(); break;
+	case ValueTypeListVector: stream >> value.as<AttrListVector>(); break;
+	case ValueTypeListVector2: stream >> value.as<AttrListVector2>(); break;
+	case ValueTypeListMatrix: stream >> value.as<AttrListMatrix>(); break;
+	case ValueTypeListTransform: stream >> value.as<AttrListTransform>(); break;
+	case ValueTypeListString: stream >> value.as<AttrListString>(); break;
+	case ValueTypeListPlugin: stream >> value.as<AttrListPlugin>(); break;
+	case ValueTypeListValue: stream >> value.as<AttrListValue>(); break;
+	case ValueTypeInstancer: stream >> value.as<AttrInstancer>(); break;
+	case ValueTypeMapChannels: stream >> value.as<AttrMapChannels>(); break;
+	default: assert(!"Missing DeserializerStream::operator>> for some ValueType"); break;
+	}
+	return stream;
+}
 
 #endif // _DESERIALIZER_HPP_

@@ -6,50 +6,6 @@
 #include "zmq_serializer.hpp"
 #include "zmq_deserializer.hpp"
 
-// Compile time max(sizeof(A), sizeof(B))
-template <size_t A, size_t B>
-struct compile_time_max {
-	enum { value = (A > B ? A : B) };
-};
-
-// recursive template for max of variable number of template arguments
-// general case - max of sizeof of the first type and recursive call for the rest
-template <typename T, typename ... Q>
-struct max_type_sizeof {
-	enum { value = compile_time_max<sizeof(T), max_type_sizeof<Q...>::value >::value };
-};
-
-// base case for just 2 types
-template <typename T, typename Q>
-struct max_type_sizeof<T, Q> {
-	enum { value = compile_time_max<sizeof(T), sizeof(Q)>::value };
-};
-
-// maximum possible size of a value in the message
-const int MAX_MESSAGE_SIZE = max_type_sizeof<
-VRayBaseTypes::AttrColor,
-VRayBaseTypes::AttrAColor,
-VRayBaseTypes::AttrVector,
-VRayBaseTypes::AttrVector2,
-VRayBaseTypes::AttrMatrix,
-VRayBaseTypes::AttrTransform,
-VRayBaseTypes::AttrPlugin,
-VRayBaseTypes::AttrListInt,
-VRayBaseTypes::AttrListFloat,
-VRayBaseTypes::AttrListColor,
-VRayBaseTypes::AttrListVector,
-VRayBaseTypes::AttrListVector2,
-VRayBaseTypes::AttrListPlugin,
-VRayBaseTypes::AttrListString,
-VRayBaseTypes::AttrMapChannels,
-VRayBaseTypes::AttrInstancer,
-VRayBaseTypes::AttrImage,
-VRayBaseTypes::AttrImageSet,
-VRayBaseTypes::AttrSimpleType<int>,
-VRayBaseTypes::AttrSimpleType<float>,
-VRayBaseTypes::AttrSimpleType<double>,
-VRayBaseTypes::AttrSimpleType<std::string>>::value;
-
 
 class VRayMessage {
 public:
@@ -125,7 +81,6 @@ public:
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
 	    , rendererState(RendererState::None)
-	    , valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
 	{
@@ -139,18 +94,13 @@ public:
 	    , rendererAction(other.rendererAction)
 	    , rendererType(other.rendererType)
 	    , rendererState(other.rendererState)
-	    , valueType(other.valueType)
 	    , valueSetter(other.valueSetter)
 	    , pluginAction(other.pluginAction)
 	    , pluginName(std::move(other.pluginName))
 	    , pluginProperty(std::move(other.pluginProperty))
+		, value(std::move(other.value))
 	{
 		this->message.move(&other.message);
-		if (valueType != VRayBaseTypes::ValueTypeUnknown) {
-			memcpy(value_data, other.value_data, MAX_MESSAGE_SIZE);
-			other.valueType = VRayBaseTypes::ValueTypeUnknown;
-			memset(other.value_data, 0, MAX_MESSAGE_SIZE);
-		}
 	}
 
 	VRayMessage(size_t size)
@@ -159,7 +109,6 @@ public:
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
 	    , rendererState(RendererState::None)
-	    , valueType(VRayBaseTypes::ValueType::ValueTypeUnknown)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
 	{}
@@ -170,7 +119,7 @@ public:
 
 	const std::string getPluginNew() const {
 		if (pluginAction == PluginAction::Replace && type == Type::ChangePlugin) {
-			return getValue<VRayBaseTypes::AttrSimpleType<std::string>>()->m_Value;
+			return value.as<VRayBaseTypes::AttrSimpleType<std::string>>();
 		} else {
 			assert((pluginAction == PluginAction::Replace && type == Type::ChangePlugin) && "Getting plugin new");
 			return "";
@@ -220,11 +169,11 @@ public:
 
 	template <typename T>
 	const T * getValue() const {
-		return reinterpret_cast<const T *>(this->value_data);
+		return value.asPtr<T>();
 	}
 
 	VRayBaseTypes::ValueType getValueType() const {
-		return valueType;
+		return value.type;
 	}
 
 	/// Static methods for creating messages
@@ -255,6 +204,13 @@ public:
 		using namespace std;
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property << ValueSetter::Default << value.getType() << value;
+		return fromStream(strm);
+	}
+
+	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const VRayBaseTypes::AttrValue & value) {
+		using namespace std;
+		SerializerStream strm;
+		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property << ValueSetter::Default << value;
 		return fromStream(strm);
 	}
 
@@ -317,163 +273,17 @@ public:
 		return fromStream(strm);
 	}
 
-	~VRayMessage() {
-		using namespace VRayBaseTypes;
-
-		switch (valueType) {
-			case ValueType::ValueTypeColor:
-				getValue<AttrColor>()->~AttrColor();
-				break;
-			case ValueType::ValueTypeAColor:
-				getValue<AttrAColor>()->~AttrAColor();
-				break;
-			case ValueType::ValueTypeVector:
-				getValue<AttrVector>()->~AttrVector();
-				break;
-			case ValueType::ValueTypeVector2:
-				getValue<AttrVector2>()->~AttrVector2();
-				break;
-			case ValueType::ValueTypeMatrix:
-				getValue<AttrMatrix>()->~AttrMatrix();
-				break;
-			case ValueType::ValueTypeTransform:
-				getValue<AttrTransform>()->~AttrTransform();
-				break;
-			case ValueType::ValueTypePlugin:
-				getValue<AttrPlugin>()->~AttrPlugin();
-				break;
-			case ValueType::ValueTypeListInt:
-				getValue<AttrListInt>()->~AttrListInt();
-				break;
-			case ValueType::ValueTypeListFloat:
-				getValue<AttrListFloat>()->~AttrListFloat();
-				break;
-			case ValueType::ValueTypeListColor:
-				getValue<AttrListColor>()->~AttrListColor();
-				break;
-			case ValueType::ValueTypeListVector:
-				getValue<AttrListVector>()->~AttrListVector();
-				break;
-			case ValueType::ValueTypeListVector2:
-				getValue<AttrListVector2>()->~AttrListVector2();
-				break;
-			case ValueType::ValueTypeListPlugin:
-				getValue<AttrListPlugin>()->~AttrListPlugin();
-				break;
-			case ValueType::ValueTypeListString:
-				getValue<AttrListString>()->~AttrListString();
-				break;
-			case ValueType::ValueTypeMapChannels:
-				getValue<AttrMapChannels>()->~AttrMapChannels();
-				break;
-			case ValueType::ValueTypeInstancer:
-				getValue<AttrInstancer>()->~AttrInstancer();
-				break;
-			case ValueType::ValueTypeImage:
-				getValue<AttrImageSet>()->~AttrImageSet();
-				break;
-			case ValueType::ValueTypeString:
-				getValue<AttrSimpleType<std::string>>()->~AttrSimpleType();
-				break;
-			case ValueType::ValueTypeListValue:
-			case ValueType::ValueTypeListTransform:
-			case ValueType::ValueTypeListMatrix:
-			case ValueType::ValueTypeList:
-			case ValueType::ValueTypeDouble:
-			case ValueType::ValueTypeFloat:
-			case ValueType::ValueTypeInt:
-			case ValueType::ValueTypeUnknown:
-				break;
-		}
-
-		memset(value_data, 0, MAX_MESSAGE_SIZE);
-	}
-
 private:
 	template <typename T>
 	T * setValue() {
-		T * ptr = reinterpret_cast<T *>(this->value_data);
-		new(ptr)T();
-		return ptr;
+		new(value.asPtr<T>)T();
+		return value.asPtr<T>;
 	}
 
 	static VRayMessage fromStream(SerializerStream & strm) {
 		VRayMessage msg(strm.getSize());
 		memcpy(msg.message.data(), strm.getData(), strm.getSize());
 		return msg;
-	}
-
-	void readValue(DeserializerStream & stream) {
-		using namespace VRayBaseTypes;
-
-		stream >> valueType;
-		switch (valueType) {
-			case ValueType::ValueTypeColor:
-				stream >> *setValue<AttrColor>();
-				break;
-			case ValueType::ValueTypeAColor:
-				stream >> *setValue<AttrAColor>();
-				break;
-			case ValueType::ValueTypeVector:
-				stream >> *setValue<AttrVector>();
-				break;
-			case ValueType::ValueTypeVector2:
-				stream >> *setValue<AttrVector2>();
-				break;
-			case ValueType::ValueTypeMatrix:
-				stream >> *setValue<AttrMatrix>();
-				break;
-			case ValueType::ValueTypeTransform:
-				stream >> *setValue<AttrTransform>();
-				break;
-			case ValueType::ValueTypePlugin:
-				stream >> *setValue<AttrPlugin>();
-				break;
-			case ValueType::ValueTypeListInt:
-				stream >> *setValue<AttrListInt>();
-				break;
-			case ValueType::ValueTypeListFloat:
-				stream >> *setValue<AttrListFloat>();
-				break;
-			case ValueType::ValueTypeListColor:
-				stream >> *setValue<AttrListColor>();
-				break;
-			case ValueType::ValueTypeListVector:
-				stream >> *setValue<AttrListVector>();
-				break;
-			case ValueType::ValueTypeListVector2:
-				stream >> *setValue<AttrListVector2>();
-				break;
-			case ValueType::ValueTypeListPlugin:
-				stream >> *setValue<AttrListPlugin>();
-				break;
-			case ValueType::ValueTypeListString:
-				stream >> *setValue<AttrListString>();
-				break;
-			case ValueType::ValueTypeMapChannels:
-				stream >> *setValue<AttrMapChannels>();
-				break;
-			case ValueType::ValueTypeInstancer:
-				stream >> *setValue<AttrInstancer>();
-				break;
-			case ValueType::ValueTypeImage:
-				stream >> *setValue<AttrImageSet>();
-				break;
-			case ValueType::ValueTypeInt:
-				stream >> *setValue<AttrSimpleType<int>>();
-				break;
-			case ValueType::ValueTypeFloat:
-				stream >> *setValue<AttrSimpleType<float>>();
-				break;
-			case ValueType::ValueTypeDouble:
-				stream >> *setValue<AttrSimpleType<double>>();
-				break;
-			case ValueType::ValueTypeString:
-				stream >> *setValue<AttrSimpleType<std::string>>();
-				break;
-			default:
-				assert(false && "Failed to parse value!\n");
-		}
 	}
 
 	void parse() {
@@ -485,35 +295,27 @@ private:
 		if (type == Type::ChangePlugin) {
 			stream >> pluginName >> pluginAction;
 			if (pluginAction == PluginAction::Update) {
-				stream >> pluginProperty >> valueSetter;
-				readValue(stream);
-			}
-			else if (pluginAction == PluginAction::Create) {
+				stream >> pluginProperty >> valueSetter >> value;
+			} else if (pluginAction == PluginAction::Create) {
 				if (stream.hasMore()) {
 					stream >> pluginType;
 				}
 			} else if (pluginAction == PluginAction::Replace) {
 				assert(stream.hasMore() && "Missing new plugin for replace plugin");
-				readValue(stream);
+				stream >> value;
 			}
-		}
-		else if (type == Type::SingleValue || type == Type::Image) {
-			readValue(stream);
-		}
-		else if (type == Type::ChangeRenderer) {
+		} else if (type == Type::SingleValue || type == Type::Image) {
+			stream >> value;
+		} else if (type == Type::ChangeRenderer) {
 			stream >> rendererAction;
 			if (rendererAction == RendererAction::Resize) {
 				stream >> rendererWidth >> rendererHeight;
-			}
-			else if (rendererAction == RendererAction::SetRendererType) {
+			} else if (rendererAction == RendererAction::SetRendererType) {
 				stream >> rendererType;
-			}
-			else if (rendererAction == RendererAction::SetRendererState) {
-				stream >> rendererState;
-				readValue(stream);
-			}
-			else if (rendererAction > RendererAction::_ArgumentRenderAction) {
-				readValue(stream);
+			} else if (rendererAction == RendererAction::SetRendererState) {
+				stream >> rendererState >> value;
+			} else if (rendererAction > RendererAction::_ArgumentRenderAction) {
+				stream >> value;
 			}
 		}
 	}
@@ -529,7 +331,6 @@ private:
 	RendererType              rendererType;
 	RendererState             rendererState;
 
-	VRayBaseTypes::ValueType  valueType;
 	ValueSetter               valueSetter;
 
 	PluginAction              pluginAction;
@@ -540,12 +341,10 @@ private:
 	int                       rendererWidth;
 	int                       rendererHeight;
 
+	VRayBaseTypes::AttrValue  value;
 private:
 	VRayMessage(const VRayMessage&) = delete;
 	VRayMessage& operator=(const VRayMessage&) = delete;
-
-	uint8_t value_data[MAX_MESSAGE_SIZE];
-
 };
 
 #endif // _ZMQ_MESSAGE_H_
