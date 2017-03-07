@@ -225,29 +225,6 @@ struct AttrImage {
 	    , imageType(NONE)
 	{}
 
-	AttrImage(AttrImage &&other)
-	    : data(std::move(other.data))
-	    , size(other.size)
-	    , width(other.width)
-	    , height(other.height)
-	    , x(other.x)
-	    , y(other.y)
-	    , imageType(other.imageType)
-	{}
-
-	AttrImage &operator=(AttrImage &&other) {
-		if (this != &other) {
-			std::swap(data, other.data);
-			std::swap(size, other.size);
-			std::swap(width, other.width);
-			std::swap(height, other.height);
-			std::swap(imageType, other.imageType);
-			std::swap(x, other.x);
-			std::swap(y, other.y);
-		}
-		return *this;
-	}
-
 	AttrImage(const void *data, size_t size, AttrImage::ImageType type, int width, int height, int x = -1, int y = -1)
 	    : data(nullptr)
 	    , size(size)
@@ -290,16 +267,9 @@ struct AttrImageSet {
 	ValueType getType() const {
 		return ValueType::ValueTypeImageSet;
 	}
-
-	AttrImageSet(ImageSourceType sourceType = ImageSourceInvalid): sourceType(sourceType) {}
-	AttrImageSet(AttrImageSet &&other)
-		: images(std::move(other.images))
-	{}
-
 	std::unordered_map<RenderChannelType, AttrImage, std::hash<int>> images;
 	ImageSourceType sourceType;
 };
-
 
 struct AttrColor {
 
