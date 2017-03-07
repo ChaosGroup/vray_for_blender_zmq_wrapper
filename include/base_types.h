@@ -267,6 +267,11 @@ struct AttrImageSet {
 	ValueType getType() const {
 		return ValueType::ValueTypeImageSet;
 	}
+
+	AttrImageSet(ImageSourceType sourceType = ImageSourceInvalid)
+	    : sourceType(sourceType)
+	{}
+
 	std::unordered_map<RenderChannelType, AttrImage, std::hash<int>> images;
 	ImageSourceType sourceType;
 };
