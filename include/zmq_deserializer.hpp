@@ -99,31 +99,33 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 }
 
 
-inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<VRayBaseTypes::AttrPlugin> & list) {
+template <typename T>
+inline void readListNonPOD(DeserializerStream & stream, VRayBaseTypes::AttrList<T> & list) {
 	list.init();
 	int size = 0;
 	stream >> size;
 	for (int c = 0; c < size; ++c) {
-		VRayBaseTypes::AttrPlugin item;
+		T item;
 		stream >> item;
-		list.append(item);
+		list.append(std::move(item));
 	}
+}
+
+inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<VRayBaseTypes::AttrPlugin> & list) {
+	readListNonPOD(stream, list);
 	return stream;
 }
 
 
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<std::string> & list) {
-	list.init();
-	int size = 0;
-	stream >> size;
-	for (int c = 0; c < size; ++c) {
-		std::string item;
-		stream >> item;
-		list.append(item);
-	}
+	readListNonPOD(stream, list);
 	return stream;
 }
 
+inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrList<VRayBaseTypes::AttrValue> & list) {
+	readListNonPOD(stream, list);
+	return stream;
+}
 
 inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseTypes::AttrMapChannels & map) {
 	map.data.clear();
