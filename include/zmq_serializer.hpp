@@ -41,7 +41,7 @@ inline SerializerStream & operator<<(SerializerStream & stream, const T & value)
 
 
 inline SerializerStream & operator<<(SerializerStream & stream, const std::string & value) {
-	size_t size = value.size();
+	int size = value.size();
 	stream << size;
 	stream.write(value.c_str(), size);
 	return stream;
