@@ -25,7 +25,7 @@ public:
 		return last - first;
 	}
 
-	size_t getOffset() const {
+	size_t getRemaining() const {
 		return last - current;
 	}
 
@@ -42,10 +42,11 @@ public:
 	}
 
 	bool forward(size_t size) {
-		if (current + size > last) {
+		const char * newPtr = current + size;
+		if (newPtr > last || newPtr < first) {
 			return false;
 		}
-		current += size;
+		current = newPtr;
 		return true;
 	}
 
@@ -64,7 +65,7 @@ DeserializerStream & operator>>(DeserializerStream & stream, T & value) {
 
 
 inline DeserializerStream & operator>>(DeserializerStream & stream, std::string & value) {
-	size_t size = 0;
+	int size = 0;
 	stream >> size;
 
 	// either push back char by char, or do this

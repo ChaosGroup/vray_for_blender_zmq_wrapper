@@ -98,7 +98,7 @@ public:
 	/// Send data with size, the data will be copied inside and can be safely freed after the function returns
 	/// @data - pointer to bytes
 	/// @size - number of bytes in data
-	void send(void *data, int size);
+	void send(const void *data, int size);
 
 	/// Send message while also stealing it's content
 	/// @message - the message to send, after the function returns, callee's message is empty
@@ -331,7 +331,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 				if (frame.control == ControlMessage::DATA_MSG) {
 					std::lock_guard<std::mutex> cbLock(callbackMutex);
 					if (this->callback) {
-						this->callback(VRayMessage(payloadMsg), this);
+						this->callback(VRayMessage::fromZmqMessage(payloadMsg), this);
 					}
 				} else if (frame.control == ControlMessage::PING_MSG) {
 					if (payloadMsg.size() != 0) {
@@ -535,9 +535,8 @@ inline void ZmqClient::send(VRayMessage && message) {
 	this->messageQue.push_back(std::move(message));
 }
 
-inline void ZmqClient::send(void * data, int size) {
-	VRayMessage msg(size);
-	memcpy(msg.getMessage().data(), data, size);
+inline void ZmqClient::send(const void * data, int size) {
+	VRayMessage msg(reinterpret_cast<const char *>(data), size);
 
 	std::lock_guard<std::mutex> lock(this->messageMutex);
 	this->messageQue.push_back(std::move(msg));

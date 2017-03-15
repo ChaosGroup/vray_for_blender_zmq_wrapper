@@ -75,18 +75,14 @@ public:
 		ProgressMessage,
 	};
 
-	VRayMessage(zmq::message_t &message)
-	    : message(0)
-	    , type(Type::None)
+	VRayMessage()
+	    : type(Type::None)
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
 	    , rendererState(RendererState::None)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
-	{
-		this->message.move(&message);
-		this->parse();
-	}
+	{}
 
 	VRayMessage(VRayMessage && other)
 	    : message(0)
@@ -96,22 +92,37 @@ public:
 	    , rendererState(other.rendererState)
 	    , valueSetter(other.valueSetter)
 	    , pluginAction(other.pluginAction)
+	    , pluginType(std::move(other.pluginType))
 	    , pluginName(std::move(other.pluginName))
 	    , pluginProperty(std::move(other.pluginProperty))
-		, value(std::move(other.value))
+	    , value(std::move(other.value))
+	    , rendererWidth(other.rendererWidth)
+	    , rendererHeight(other.rendererHeight)
 	{
 		this->message.move(&other.message);
 	}
 
-	VRayMessage(size_t size)
-	    : message(size)
-	    , type(Type::None)
+	/// Create message from data, usually to be sent
+	explicit VRayMessage(const char * data, int size)
+	    : message(data, size)
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
 	    , rendererState(RendererState::None)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
 	{}
+
+	/// Create VRayMessage from zmq::message_t parsing the data
+	static VRayMessage fromZmqMessage(zmq::message_t & message) {
+		VRayMessage msg;
+		msg.message.move(&message);
+		msg.parse();
+		return msg;
+	}
+
+	static VRayMessage fromData(const char * data, int size) {
+		return VRayMessage(data, size);
+	}
 
 	zmq::message_t & getMessage() {
 		return this->message;
@@ -170,6 +181,10 @@ public:
 	template <typename T>
 	const T * getValue() const {
 		return value.asPtr<T>();
+	}
+
+	const VRayBaseTypes::AttrValue & getAttrValue() const {
+		return value;
 	}
 
 	VRayBaseTypes::ValueType getValueType() const {
@@ -281,9 +296,7 @@ private:
 	}
 
 	static VRayMessage fromStream(SerializerStream & strm) {
-		VRayMessage msg(strm.getSize());
-		memcpy(msg.message.data(), strm.getData(), strm.getSize());
-		return msg;
+		return fromData(strm.getData(), strm.getSize());
 	}
 
 	void parse() {
