@@ -168,11 +168,11 @@ private:
 inline ZmqClient::ZmqClient(bool isHeartbeat)
     : clientType(isHeartbeat ? ClientType::Heartbeat : ClientType::Exporter)
     , context(1)
+    , startServing(false)
     , isWorking(true)
     , errorConnect(false)
-    , startServing(false)
     , flushOnExit(false)
-	, serverStop(false)
+    , serverStop(false)
     , frontend(nullptr)
 {
 
