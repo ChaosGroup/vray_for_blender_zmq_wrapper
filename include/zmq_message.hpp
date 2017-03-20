@@ -250,7 +250,8 @@ public:
 
 	static VRayMessage msgVRayLog(int level,const std::string & log) {
 		SerializerStream strm;
-		strm << VRayMessage::Type::VRayLog << level << log;
+		VRayBaseTypes::AttrSimpleType<std::string> val(log);
+		strm << VRayMessage::Type::VRayLog << level << val.getType() << log;
 		return fromStream(strm);
 	}
 
