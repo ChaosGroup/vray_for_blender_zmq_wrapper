@@ -98,6 +98,7 @@ public:
 	    , value(std::move(other.value))
 	    , rendererWidth(other.rendererWidth)
 	    , rendererHeight(other.rendererHeight)
+	    , logLevel(other.logLevel)
 	{
 		this->message.move(&other.message);
 	}
@@ -173,6 +174,10 @@ public:
 		return rendererState;
 	}
 
+	int getLogLevel() const {
+		return logLevel;
+	}
+
 	void getRendererSize(int & width, int & height) const {
 		width = this->rendererWidth;
 		height = this->rendererHeight;
@@ -243,10 +248,9 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgVRayLog(const std::string & log) {
+	static VRayMessage msgVRayLog(int level,const std::string & log) {
 		SerializerStream strm;
-		VRayBaseTypes::AttrSimpleType<std::string> val(log);
-		strm << VRayMessage::Type::VRayLog << val.getType() << val;
+		strm << VRayMessage::Type::VRayLog << level << log;
 		return fromStream(strm);
 	}
 
@@ -319,7 +323,7 @@ private:
 		} else if (type == Type::Image) {
 			stream >> value;
 		} else if (type == Type::VRayLog) {
-			stream >> value;
+			stream >> logLevel >> value;
 			assert(value.type == VRayBaseTypes::ValueTypeString && "Type::VRayLog must be a string value");
 		} else if (type == Type::ChangeRenderer) {
 			stream >> rendererAction;
@@ -353,6 +357,7 @@ private:
 	std::string               pluginType;
 	std::string               pluginProperty;
 
+	int                       logLevel;
 	int                       rendererWidth;
 	int                       rendererHeight;
 
