@@ -186,6 +186,16 @@ struct AttrSimpleType {
 	T value;
 };
 
+template <typename Q>
+struct AttrSimpleType<AttrSimpleType<Q>> {
+	AttrSimpleType() {
+		static_assert(false, "Cannot make AttrSimpleType with T = AttrSimpleType");
+	}
+	AttrSimpleType(const AttrSimpleType<Q> & val) {
+		static_assert(false, "Cannot make AttrSimpleType with T = AttrSimpleType");
+	}
+};
+
 template <>
 inline ValueType AttrSimpleType<int>::getType() const {
 	return ValueType::ValueTypeInt;

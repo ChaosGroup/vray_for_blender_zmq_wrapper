@@ -20,6 +20,8 @@
 #include "base_types.h"
 #include "zmq_message.hpp"
 
+static const int ZMQ_PROTOCOL_VERSION = 1011;
+
 static const int CLIENT_PING_INTERVAL = 1000;
 static const int SOCKET_IO_TIMEOUT = 100;
 
@@ -54,7 +56,6 @@ enum class ControlMessage: int {
 	STOP_MSG = 4000,
 };
 
-static const int ZMQ_PROTOCOL_VERSION = 1010;
 
 struct ControlFrame {
 	int version;

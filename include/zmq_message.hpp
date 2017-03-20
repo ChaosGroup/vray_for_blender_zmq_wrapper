@@ -9,15 +9,15 @@
 
 class VRayMessage {
 public:
-	enum class Type : int {
+	enum class Type : char {
 		None,
-		SingleValue,
 		Image,
 		ChangePlugin,
-		ChangeRenderer
+		ChangeRenderer,
+		VRayLog,
 	};
 
-	enum class PluginAction {
+	enum class PluginAction : char {
 		None,
 		Create,
 		Remove,
@@ -25,7 +25,7 @@ public:
 		Replace
 	};
 
-	enum class RendererAction {
+	enum class RendererAction : char {
 		None,
 		Init,
 		Free,
@@ -55,19 +55,19 @@ public:
 		SetVfbShow
 	};
 
-	enum class ValueSetter {
+	enum class ValueSetter : char {
 		None,
 		Default,
 		AsString
 	};
 
-	enum class RendererType {
+	enum class RendererType : char {
 		None,
 		RT,
 		Animation
 	};
 
-	enum class RendererState {
+	enum class RendererState : char {
 		None,
 		Abort,
 		Continue,
@@ -237,17 +237,16 @@ public:
 		return fromStream(strm);
 	}
 
-	/// Create message containing only a value, eg AttrImage
-	template <typename T>
-	static VRayMessage msgSingleValue(const T & value) {
-		SerializerStream strm;
-		strm << VRayMessage::Type::SingleValue << value.getType() << value;
-		return fromStream(strm);
-	}
-
 	static VRayMessage msgImageSet(const VRayBaseTypes::AttrImageSet & value) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::Image << value.getType() << value;
+		return fromStream(strm);
+	}
+
+	static VRayMessage msgVRayLog(const std::string & log) {
+		SerializerStream strm;
+		VRayBaseTypes::AttrSimpleType<std::string> val(log);
+		strm << VRayMessage::Type::VRayLog << val.getType() << val;
 		return fromStream(strm);
 	}
 
@@ -317,8 +316,11 @@ private:
 				assert(stream.hasMore() && "Missing new plugin for replace plugin");
 				stream >> value;
 			}
-		} else if (type == Type::SingleValue || type == Type::Image) {
+		} else if (type == Type::Image) {
 			stream >> value;
+		} else if (type == Type::VRayLog) {
+			stream >> value;
+			assert(value.type == VRayBaseTypes::ValueTypeString && "Type::VRayLog must be a string value");
 		} else if (type == Type::ChangeRenderer) {
 			stream >> rendererAction;
 			if (rendererAction == RendererAction::Resize) {
