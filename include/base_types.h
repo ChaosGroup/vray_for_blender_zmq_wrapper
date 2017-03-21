@@ -188,12 +188,9 @@ struct AttrSimpleType {
 
 template <typename Q>
 struct AttrSimpleType<AttrSimpleType<Q>> {
-	AttrSimpleType() {
-		static_assert(false, "Cannot make AttrSimpleType with T = AttrSimpleType");
-	}
-	AttrSimpleType(const AttrSimpleType<Q> & val) {
-		static_assert(false, "Cannot make AttrSimpleType with T = AttrSimpleType");
-	}
+	// intentionally left uninplemented - should not happen
+	AttrSimpleType();
+	AttrSimpleType(const AttrSimpleType<Q> & val);
 };
 
 template <>
