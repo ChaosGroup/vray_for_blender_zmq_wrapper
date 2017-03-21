@@ -52,7 +52,8 @@ public:
 		SetQuality,
 		SetCurrentCamera,
 		SetCommitAction,
-		SetVfbShow
+		SetVfbShow,
+		SetViewportImageFormat,
 	};
 
 	enum class ValueSetter : char {
