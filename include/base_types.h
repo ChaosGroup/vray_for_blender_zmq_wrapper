@@ -842,6 +842,7 @@ struct AttrValue {
 		case ValueTypeListValue:     as<AttrListValue>().~AttrListValue(); break;
 		case ValueTypeInstancer:     as<AttrInstancer>().~AttrInstancer(); break;
 		case ValueTypeMapChannels:   as<AttrMapChannels>().~AttrMapChannels(); break;
+		case ValueTypeImageSet:      as<AttrImageSet>().~AttrImageSet(); break;
 		default: break; // nothing to do
 		}
 		memset(data, 0, ATTR_DATA_SIZE);
