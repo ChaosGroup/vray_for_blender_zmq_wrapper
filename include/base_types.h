@@ -193,6 +193,29 @@ struct AttrSimpleType<AttrSimpleType<Q>> {
 	AttrSimpleType(const AttrSimpleType<Q> & val);
 };
 
+/// Specialize bool as int since we dont have bool type
+/// Specializing just getType is not enough because value member must be atleast int size
+/// so writing and reading is okay
+template <>
+struct AttrSimpleType<bool> {
+	ValueType getType() const {
+		return ValueType::ValueTypeInt;
+	}
+	AttrSimpleType(): value() {}
+	AttrSimpleType(const bool & val): value(val) {}
+
+	operator const bool & () const {
+		return reinterpret_cast<const bool &>(value);
+	}
+
+	operator bool & () {
+		return reinterpret_cast<bool&>(value);
+	}
+
+	int value;
+};
+
+
 template <>
 inline ValueType AttrSimpleType<int>::getType() const {
 	return ValueType::ValueTypeInt;
