@@ -65,7 +65,8 @@ public:
 	enum class RendererType : char {
 		None,
 		RT,
-		Animation
+		Animation,
+		SingleFrame,
 	};
 
 	enum class RendererState : char {
