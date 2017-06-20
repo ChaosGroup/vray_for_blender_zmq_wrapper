@@ -386,15 +386,11 @@ struct AttrVector {
 		z(_z)
 	{}
 
-	float operator * (const AttrVector &other) {
-		return x * other.x + y * other.y + z * other.z;
-	}
-
-	AttrVector operator - (const AttrVector &other) {
+	AttrVector operator - (const AttrVector &other) const {
 		return AttrVector(x - other.x, y - other.y, z - other.z);
 	}
 
-	bool operator == (const AttrVector &other) {
+	bool operator == (const AttrVector &other) const {
 		return (x == other.x) && (y == other.y) && (z == other.z);
 	}
 
@@ -525,9 +521,13 @@ struct AttrPlugin {
 template <typename T>
 struct AttrList {
 	typedef std::vector<T>            DataType;
-	typedef std::shared_ptr<DataType> DataArray;
+	typedef std::shared_ptr<DataType> DataArrayPtr;
 
 	ValueType getType() const ;
+
+	AttrList(DataType && data)
+	    : m_Ptr(new DataType(std::move(data)))
+	{}
 
 	AttrList() {
 		init();
@@ -539,7 +539,7 @@ struct AttrList {
 	}
 
 	void init() {
-		m_Ptr = DataArray(new DataType);
+		m_Ptr = DataArrayPtr(new DataType);
 	}
 
 	void resize(const int &cnt) {
@@ -575,20 +575,20 @@ struct AttrList {
 		return m_Ptr && m_Ptr.get()->size();
 	}
 
-	const bool empty() const {
+	bool empty() const {
 		return !m_Ptr || (m_Ptr.get()->size() == 0);
 	}
 
-	const DataArray getData() const {
+	const DataArrayPtr getData() const {
 		return m_Ptr;
 	}
 
-	DataArray ptr() {
+	DataArrayPtr getData() {
 		return m_Ptr;
 	}
 
 private:
-	DataArray m_Ptr;
+	DataArrayPtr m_Ptr;
 };
 
 typedef AttrList<int>           AttrListInt;
