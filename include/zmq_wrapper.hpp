@@ -296,7 +296,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 		auto now = std::chrono::high_resolution_clock::now();
 
 		try {
-			const int pollRes = zmq::poll(&pollContext, 1, 10);
+			zmq::poll(&pollContext, 1, 10);
 		} catch (zmq::error_t & ex) {
 			printf("ZMQ failed [%s] zmq::poll - stopping client.\n", ex.what());
 			return;

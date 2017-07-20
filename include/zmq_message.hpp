@@ -94,13 +94,13 @@ public:
 	    , rendererState(other.rendererState)
 	    , valueSetter(other.valueSetter)
 	    , pluginAction(other.pluginAction)
-	    , pluginType(std::move(other.pluginType))
 	    , pluginName(std::move(other.pluginName))
+	    , pluginType(std::move(other.pluginType))
 	    , pluginProperty(std::move(other.pluginProperty))
 	    , value(std::move(other.value))
+	    , logLevel(other.logLevel)
 	    , rendererWidth(other.rendererWidth)
 	    , rendererHeight(other.rendererHeight)
-	    , logLevel(other.logLevel)
 	{
 		this->message.move(&other.message);
 	}
