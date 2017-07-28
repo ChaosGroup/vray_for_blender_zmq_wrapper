@@ -97,8 +97,8 @@ public:
 	    , pluginName(std::move(other.pluginName))
 	    , pluginType(std::move(other.pluginType))
 	    , pluginProperty(std::move(other.pluginProperty))
-	    , value(std::move(other.value))
 	    , logLevel(other.logLevel)
+	    , value(std::move(other.value))
 	    , rendererWidth(other.rendererWidth)
 	    , rendererHeight(other.rendererHeight)
 	{
