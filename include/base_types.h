@@ -679,7 +679,7 @@ struct AttrInstancer {
 	};
 	typedef AttrList<Item> Items;
 
-	int frameNumber;
+	float frameNumber;
 	Items data;
 };
 
