@@ -98,9 +98,9 @@ public:
 	    , pluginType(std::move(other.pluginType))
 	    , pluginProperty(std::move(other.pluginProperty))
 	    , logLevel(other.logLevel)
-	    , value(std::move(other.value))
 	    , rendererWidth(other.rendererWidth)
 	    , rendererHeight(other.rendererHeight)
+	    , value(std::move(other.value))
 	{
 		this->message.move(&other.message);
 	}
