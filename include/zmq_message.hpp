@@ -67,6 +67,7 @@ public:
 		RT,
 		Animation,
 		SingleFrame,
+		Preview,
 	};
 
 	enum class RendererState : char {
