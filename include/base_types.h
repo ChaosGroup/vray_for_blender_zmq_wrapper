@@ -27,6 +27,8 @@
 #include <memory>
 #include <cassert>
 
+#include <initializer_list>
+
 // Compile time max(A, B)
 template <size_t A, size_t B>
 struct compile_time_max {
@@ -528,6 +530,10 @@ struct AttrList {
 	AttrList(DataType && data)
 	    : m_Ptr(new DataType(std::move(data)))
 	{}
+
+	AttrList(std::initializer_list<T> items) {
+		m_Ptr = DataArrayPtr(new DataType(items));
+	}
 
 	AttrList() {
 		init();
