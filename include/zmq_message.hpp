@@ -34,6 +34,7 @@ public:
 		Pause,
 		Resume,
 		Resize,
+		Reset,
 		SetOnBucketReady,
 		_ArgumentRenderAction,
 		AddHosts,
