@@ -7,6 +7,7 @@
 #include <string>
 #include <functional>
 #include <thread>
+#include <atomic>
 #include <memory>
 #include <deque>
 #include <mutex>
@@ -132,6 +133,11 @@ public:
 	/// Stop the server waiting for the worker thread to join
 	void syncStop();
 
+	/// Block until all messages are sent or timeout has passed, if there are no messages, return immediately
+	/// @timeout - timeout in milliseconds to wait max
+	/// @return - false if there are still messages in queue after wait is finished
+	bool waitForMessages(int timeout = 500);
+
 private:
 	void sendDataMessage(zmq::message_t & msg);
 
@@ -156,11 +162,11 @@ private:
 	std::mutex startServingMutex; ///< Mutex protecting @startServing flag
 	time_point lastHeartbeat; ///< Last time hartbeat was sent/received
 
-	bool startServing : 1; ///< Used to signal worker, the socket is connected and serving can start
-	bool isWorking    : 1; ///< Flag set to true if the thread is serving requests
-	bool errorConnect : 1; ///< Flag set to true if we could not connect
-	bool flushOnExit  : 1; ///< If true when worker is stopping for any reason, outstanding messages will be sent
-	bool serverStop   : 1; ///< If true will stop transmitting messages and send 'stop' command to server
+	std::atomic<bool> startServing; ///< Used to signal worker, the socket is connected and serving can start
+	std::atomic<bool> isWorking; ///< Flag set to true if the thread is serving requests
+	std::atomic<bool> errorConnect; ///< Flag set to true if we could not connect
+	std::atomic<bool> flushOnExit; ///< If true when worker is stopping for any reason, outstanding messages will be sent
+	std::atomic<bool> serverStop; ///< If true will stop transmitting messages and send 'stop' command to server
 
 	std::unique_ptr<zmq::socket_t> frontend; ///< The zmq socket
 };
@@ -213,7 +219,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 	if (!this->startServing) {
 		std::unique_lock<std::mutex> lock(this->startServingMutex);
 		if (!this->startServing) {
-			this->startServingCond.wait(lock, [this]() { return this->startServing; });
+			this->startServingCond.wait(lock, [this]() -> bool { return this->startServing; });
 		}
 	}
 
@@ -485,6 +491,32 @@ inline bool ZmqClient::good() const {
 inline void ZmqClient::stopServer() {
 	serverStop = true;
 	isWorking = false;
+}
+
+inline bool ZmqClient::waitForMessages(int timeout) {
+	timeout = std::min(timeout, 10000);
+	using namespace std::chrono;
+	{
+		std::lock_guard<std::mutex> lock(this->messageMutex);
+		if (this->messageQue.empty()) {
+			return true;
+		}
+	}
+
+	const auto waitBegin = high_resolution_clock::now();
+
+	while (isWorking) {
+		std::lock_guard<std::mutex> lock(this->messageMutex);
+		if (this->messageQue.empty()) {
+			return true;
+		}
+		const auto timePassed = duration_cast<milliseconds>(high_resolution_clock::now() - waitBegin).count();
+		if (timePassed >= timeout) {
+			return false;
+		}
+	}
+
+	return false;
 }
 
 inline void ZmqClient::syncStop() {
