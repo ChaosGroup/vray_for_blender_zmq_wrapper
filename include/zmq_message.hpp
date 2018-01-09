@@ -55,6 +55,8 @@ public:
 		SetCommitAction,
 		SetVfbShow,
 		SetViewportImageFormat,
+		SetRenderRegion,
+		SetCropRegion,
 	};
 
 	enum class ValueSetter : char {
@@ -252,7 +254,7 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgVRayLog(int level,const std::string & log) {
+	static VRayMessage msgVRayLog(int level, const std::string & log) {
 		SerializerStream strm;
 		VRayBaseTypes::AttrSimpleType<std::string> val(log);
 		strm << VRayMessage::Type::VRayLog << level << val.getType() << log;
@@ -260,7 +262,7 @@ public:
 	}
 
 	/// Create message to control renderer
-	static VRayMessage msgRendererAction(const RendererAction & action) {
+	static VRayMessage msgRendererAction(RendererAction action) {
 		assert(action < RendererAction::_ArgumentRenderAction && "Renderer action provided requires argument!");
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << action;
@@ -268,11 +270,18 @@ public:
 	}
 
 	template <typename T>
-	static VRayMessage msgRendererAction(const RendererAction & action, const T & value) {
+	static VRayMessage msgRendererAction(RendererAction action, const T & value) {
 		assert(action > RendererAction::_ArgumentRenderAction && "Renderer action provided requires NO argument!");
 		SerializerStream strm;
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(value);
 		strm << Type::ChangeRenderer << action << valWrapper.getType() << valWrapper;
+		return fromStream(strm);
+	}
+
+	static VRayMessage msgRendererAction(RendererAction action, const VRayBaseTypes::AttrListInt & value) {
+		assert(action > RendererAction::_ArgumentRenderAction && "Renderer action provided requires NO argument!");
+		SerializerStream strm;
+		strm << Type::ChangeRenderer << action << value.getType() << value;
 		return fromStream(strm);
 	}
 
