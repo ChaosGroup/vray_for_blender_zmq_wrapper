@@ -170,6 +170,12 @@ enum ValueType {
 	ValueTypeMapChannels,
 };
 
+/// Empty value type used to block export of a attribute
+struct AttrIgnore {
+	ValueType getType() const {
+		return ValueType::ValueTypeUnknown;
+	}
+};
 
 template <typename T>
 struct AttrSimpleType {
