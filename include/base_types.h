@@ -887,7 +887,7 @@ struct AttrValue {
 		case ValueTypeListString:    return "ListString";
 		case ValueTypeListPlugin:    return "ListPlugin";
 		case ValueTypeListValue:     return "ListValue";
-		case ValueTypeInstancer:     return "Instancer";
+		case ValueTypeInstancer:     return "Instancer2";
 		case ValueTypeMapChannels:   return "Map Channels";
 		default:
 			break;
