@@ -135,11 +135,11 @@ public:
 		return msg;
 	}
 
-	static VRayMessage fromData(const char * data, int size) {
-		return VRayMessage(data, size);
+	static zmq::message_t fromData(const char * data, int size) {
+		return zmq::message_t(data, size);
 	}
 
-	zmq::message_t & getMessage() {
+	zmq::message_t & getInternalMessage() {
 		return this->message;
 	}
 
@@ -216,20 +216,20 @@ public:
 
 	/// Static methods for creating messages
 	///
-	static VRayMessage msgPluginCreate(const std::string & pluginName, const std::string & pluginType) {
+	static zmq::message_t msgPluginCreate(const std::string & pluginName, const std::string & pluginType) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << pluginName << PluginAction::Create << pluginType;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgPluginReplace(const std::string & pluginOld, const std::string & pluginNew) {
+	static zmq::message_t msgPluginReplace(const std::string & pluginOld, const std::string & pluginNew) {
 		VRayBaseTypes::AttrSimpleType<std::string> valWrapper(pluginNew);
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << pluginOld << PluginAction::Replace << valWrapper.getType() << valWrapper;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgPluginAction(const std::string & plugin, PluginAction action) {
+	static zmq::message_t msgPluginAction(const std::string & plugin, PluginAction action) {
 		assert((action == PluginAction::Create || action == PluginAction::Remove) && "Wrong PluginAction");
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << action;
@@ -238,21 +238,21 @@ public:
 
 	/// Creates message to control a plugin property
 	template <typename T>
-	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const T & value) {
+	static zmq::message_t msgPluginSetProperty(const std::string & plugin, const std::string & property, const T & value) {
 		using namespace std;
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property << ValueSetter::Default << value.getType() << value;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgPluginSetProperty(const std::string & plugin, const std::string & property, const VRayBaseTypes::AttrValue & value) {
+	static zmq::message_t msgPluginSetProperty(const std::string & plugin, const std::string & property, const VRayBaseTypes::AttrValue & value) {
 		using namespace std;
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property << ValueSetter::Default << value;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgPluginSetPropertyString(const std::string & plugin, const std::string & property, const std::string & value) {
+	static zmq::message_t msgPluginSetPropertyString(const std::string & plugin, const std::string & property, const std::string & value) {
 		using namespace std;
 		SerializerStream strm;
 		strm << VRayMessage::Type::ChangePlugin << plugin << PluginAction::Update << property
@@ -260,13 +260,13 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgImageSet(const VRayBaseTypes::AttrImageSet & value) {
+	static zmq::message_t msgImageSet(const VRayBaseTypes::AttrImageSet & value) {
 		SerializerStream strm;
 		strm << VRayMessage::Type::Image << value.getType() << value;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgVRayLog(int level, const std::string & log) {
+	static zmq::message_t msgVRayLog(int level, const std::string & log) {
 		SerializerStream strm;
 		VRayBaseTypes::AttrSimpleType<std::string> val(log);
 		strm << VRayMessage::Type::VRayLog << level << val.getType() << log;
@@ -274,7 +274,7 @@ public:
 	}
 
 	/// Create message to control renderer
-	static VRayMessage msgRendererAction(RendererAction action) {
+	static zmq::message_t msgRendererAction(RendererAction action) {
 		assert(action < RendererAction::_ArgumentRenderAction && "Renderer action provided requires argument!");
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << action;
@@ -282,7 +282,7 @@ public:
 	}
 
 	template <typename T>
-	static VRayMessage msgRendererAction(RendererAction action, const T & value) {
+	static zmq::message_t msgRendererAction(RendererAction action, const T & value) {
 		assert(action > RendererAction::_ArgumentRenderAction && "Renderer action provided requires NO argument!");
 		SerializerStream strm;
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(value);
@@ -290,14 +290,14 @@ public:
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgRendererActionInit(RendererType type, DRFlags drFlags) {
+	static zmq::message_t msgRendererActionInit(RendererType type, DRFlags drFlags) {
 		SerializerStream strm;
 		const int value = static_cast<int>(drFlags) << static_cast<int>(DRFlags::_SerializationShift)
 		                | static_cast<int>(type) << static_cast<int>(RendererType::_SerializationShift);
 		return msgRendererAction(RendererAction::Init, value);
 	}
 
-	static VRayMessage msgRendererAction(RendererAction action, const VRayBaseTypes::AttrListInt & value) {
+	static zmq::message_t msgRendererAction(RendererAction action, const VRayBaseTypes::AttrListInt & value) {
 		assert(action > RendererAction::_ArgumentRenderAction && "Renderer action provided requires NO argument!");
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << action << value.getType() << value;
@@ -305,14 +305,14 @@ public:
 	}
 
 	template <typename T>
-	static VRayMessage msgRendererState(RendererState state, const T & val) {
+	static zmq::message_t msgRendererState(RendererState state, const T & val) {
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(val);
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << RendererAction::SetRendererState << state << valWrapper.getType() << valWrapper;
 		return fromStream(strm);
 	}
 
-	static VRayMessage msgRendererResize(int width, int height) {
+	static zmq::message_t msgRendererResize(int width, int height) {
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << RendererAction::Resize << width << height;
 		return fromStream(strm);
@@ -325,7 +325,7 @@ private:
 		return value.asPtr<T>;
 	}
 
-	static VRayMessage fromStream(SerializerStream & strm) {
+	static zmq::message_t fromStream(SerializerStream & strm) {
 		return fromData(strm.getData(), strm.getSize());
 	}
 

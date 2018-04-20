@@ -104,7 +104,7 @@ public:
 
 	/// Send message while also stealing it's content
 	/// @message - the message to send, after the function returns, callee's message is empty
-	void send(VRayMessage && message);
+	void send(zmq::message_t && message);
 
 	/// Set a callback to be called on message received (messages discarded if not set)
 	void setCallback(ZmqOnMessageCallback cb);
@@ -155,7 +155,7 @@ private:
 	std::thread worker; ///< Thread serving messages and calling the callback
 
 	zmq::context_t context; ///< The zmq context
-	std::deque<VRayMessage> messageQue; ///< Queue with outstanding messages
+	std::deque<zmq::message_t> messageQue; ///< Queue with outstanding messages
 	std::mutex messageMutex; ///< Mutex protecting @messageQue
 
 	std::condition_variable startServingCond; ///< Cond var to signal the worker thread to start serving
@@ -411,7 +411,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 			std::lock_guard<std::mutex> lock(this->messageMutex);
 
 			for (int c = 0; c < this->messageQue.size(); ++c) {
-				auto & msg = this->messageQue[c].getMessage();
+				auto & msg = this->messageQue[c];
 				bool sent = frontend->send(ControlFrame::make(), ZMQ_SNDMORE);
 				sent = sent && this->frontend->send(msg);
 				if (!sent) {
@@ -431,7 +431,7 @@ inline bool ZmqClient::workerSendoutMessages(time_point & lastHBSend) {
 	for (int c = 0; c < MAX_CONSEQ_MESSAGES && !this->messageQue.empty() && isWorking; ++c) {
 		didWork = true;
 		std::lock_guard<std::mutex> lock(this->messageMutex);
-		auto & msg = this->messageQue.front().getMessage();
+		auto & msg = this->messageQue.front();
 
 		bool sent = frontend->send(ControlFrame::make(ClientType::Exporter, ControlMessage::DATA_MSG), ZMQ_SNDMORE);
 		if (sent) {
@@ -563,13 +563,13 @@ inline void ZmqClient::setCallback(ZmqOnMessageCallback cb) {
 	this->callback = cb;
 }
 
-inline void ZmqClient::send(VRayMessage && message) {
+inline void ZmqClient::send(zmq::message_t && message) {
 	std::lock_guard<std::mutex> lock(this->messageMutex);
 	this->messageQue.push_back(std::move(message));
 }
 
 inline void ZmqClient::send(const void * data, int size) {
-	VRayMessage msg(reinterpret_cast<const char *>(data), size);
+	zmq::message_t msg(data, size);
 
 	std::lock_guard<std::mutex> lock(this->messageMutex);
 	this->messageQue.push_back(std::move(msg));
