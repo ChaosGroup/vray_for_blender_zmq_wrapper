@@ -27,7 +27,6 @@ public:
 
 	enum class RendererAction : char {
 		None,
-		Init,
 		Free,
 		Start,
 		Stop,
@@ -35,10 +34,9 @@ public:
 		Resume,
 		Resize,
 		Reset,
-		SetOnBucketReady,
 		_ArgumentRenderAction,
-		AddHosts,
-		RemoveHosts,
+		Init,
+		ResetsHosts,
 		LoadScene,
 		AppendScene,
 		ExportScene,
@@ -48,7 +46,6 @@ public:
 		SetCurrentFrame,
 		ClearFrameValues,
 		SetRendererState,
-		SetRendererType,
 		GetImage,
 		SetQuality,
 		SetCurrentCamera,
@@ -59,10 +56,11 @@ public:
 		SetCropRegion,
 	};
 
-	enum class ValueSetter : char {
-		None,
-		Default,
-		AsString
+	enum class DRFlags : char {
+		None              = 0,
+		EnableDr          = 1 << 1,
+		RenderOnlyOnHosts = 1 << 2,
+		_SerializationShift = 8,
 	};
 
 	enum class RendererType : char {
@@ -71,6 +69,13 @@ public:
 		Animation,
 		SingleFrame,
 		Preview,
+		_SerializationShift = 0,
+	};
+
+	enum class ValueSetter : char {
+		None,
+		Default,
+		AsString
 	};
 
 	enum class RendererState : char {
@@ -85,6 +90,7 @@ public:
 	    : type(Type::None)
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
+	    , drFlags(DRFlags::None)
 	    , rendererState(RendererState::None)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
@@ -95,6 +101,7 @@ public:
 	    , type(other.type)
 	    , rendererAction(other.rendererAction)
 	    , rendererType(other.rendererType)
+	    , drFlags(other.drFlags)
 	    , rendererState(other.rendererState)
 	    , valueSetter(other.valueSetter)
 	    , pluginAction(other.pluginAction)
@@ -114,6 +121,7 @@ public:
 	    : message(data, size)
 	    , rendererAction(RendererAction::None)
 	    , rendererType(RendererType::None)
+	    , drFlags(DRFlags::None)
 	    , rendererState(RendererState::None)
 	    , valueSetter(ValueSetter::None)
 	    , pluginAction(PluginAction::None)
@@ -178,6 +186,10 @@ public:
 
 	RendererState getRendererState() const {
 		return rendererState;
+	}
+
+	DRFlags getDrFlags() const {
+		return drFlags;
 	}
 
 	int getLogLevel() const {
@@ -278,6 +290,13 @@ public:
 		return fromStream(strm);
 	}
 
+	static VRayMessage msgRendererActionInit(RendererType type, DRFlags drFlags) {
+		SerializerStream strm;
+		const int value = static_cast<int>(drFlags) << static_cast<int>(DRFlags::_SerializationShift)
+		                | static_cast<int>(type) << static_cast<int>(RendererType::_SerializationShift);
+		return msgRendererAction(RendererAction::Init, value);
+	}
+
 	static VRayMessage msgRendererAction(RendererAction action, const VRayBaseTypes::AttrListInt & value) {
 		assert(action > RendererAction::_ArgumentRenderAction && "Renderer action provided requires NO argument!");
 		SerializerStream strm;
@@ -290,12 +309,6 @@ public:
 		VRayBaseTypes::AttrSimpleType<T> valWrapper(val);
 		SerializerStream strm;
 		strm << Type::ChangeRenderer << RendererAction::SetRendererState << state << valWrapper.getType() << valWrapper;
-		return fromStream(strm);
-	}
-
-	static VRayMessage msgRendererType(RendererType type) {
-		SerializerStream strm;
-		strm << Type::ChangeRenderer << RendererAction::SetRendererType << type;
 		return fromStream(strm);
 	}
 
@@ -343,8 +356,11 @@ private:
 			stream >> rendererAction;
 			if (rendererAction == RendererAction::Resize) {
 				stream >> rendererWidth >> rendererHeight;
-			} else if (rendererAction == RendererAction::SetRendererType) {
-				stream >> rendererType;
+			} else if (rendererAction == RendererAction::Init) {
+				stream >> value;
+				const int val = value.as<AttrSimpleType<int>>().value;
+				drFlags = static_cast<DRFlags>((val >> static_cast<int>(DRFlags::_SerializationShift)) & 0xff);
+				rendererType = static_cast<RendererType>((val >> static_cast<int>(RendererType::_SerializationShift)) & 0xff);
 			} else if (rendererAction == RendererAction::SetRendererState) {
 				stream >> rendererState >> value;
 			} else if (rendererAction > RendererAction::_ArgumentRenderAction) {
@@ -362,6 +378,7 @@ private:
 
 	RendererAction            rendererAction;
 	RendererType              rendererType;
+	DRFlags                   drFlags;
 	RendererState             rendererState;
 
 	ValueSetter               valueSetter;

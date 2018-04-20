@@ -21,7 +21,7 @@
 #include "base_types.h"
 #include "zmq_message.hpp"
 
-static const int ZMQ_PROTOCOL_VERSION = 1012;
+static const int ZMQ_PROTOCOL_VERSION = 1013;
 
 static const int CLIENT_PING_INTERVAL = 1000;
 static const int SOCKET_IO_TIMEOUT = 100;
