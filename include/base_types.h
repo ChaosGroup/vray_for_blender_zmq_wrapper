@@ -545,7 +545,7 @@ struct AttrList {
 		init();
 	}
 
-	AttrList(const int &size) {
+	explicit AttrList(const int &size) {
 		init();
 		resize(size);
 	}
