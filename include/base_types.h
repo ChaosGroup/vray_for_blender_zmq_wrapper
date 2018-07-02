@@ -64,11 +64,13 @@ enum CommitAction {
 
 // Values must match VRay::RendererOptions::RenderMode
 enum RenderMode {
-	RenderModeProduction  = -1,
-	RenderModeRtCpu       =  0,
-	RenderModeRtGpuOpenCL =  1,
-	RenderModeRtGpuCUDA   =  4,
-	RenderModeRtGpu       =  RenderModeRtGpuCUDA
+	RENDER_MODE_PRODUCTION = -1,
+	RENDER_MODE_RT_CPU = 0,
+	RENDER_MODE_RT_GPU_OPENCL = 1,
+	RENDER_MODE_RT_GPU_CUDA = 4,
+	RENDER_MODE_RT_GPU = RENDER_MODE_RT_GPU_CUDA,
+	RENDER_MODE_PRODUCTION_OPENCL = 101,
+	RENDER_MODE_PRODUCTION_CUDA = 104,
 };
 
 // Values must match VRay::RenderElement::Type
