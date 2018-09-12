@@ -246,6 +246,12 @@ inline ValueType AttrSimpleType<std::string>::getType() const {
 	return ValueType::ValueTypeString;
 }
 
+typedef AttrSimpleType<std::string> AttrString;
+typedef AttrSimpleType<int> AttrInt;
+typedef AttrSimpleType<float> AttrFloat;
+typedef AttrSimpleType<double> AttrDouble;
+typedef AttrSimpleType<bool> AttrBool;
+
 struct AttrImage {
 	enum ImageType {
 		NONE = 0,
