@@ -90,12 +90,20 @@ struct ControlFrame {
 
 
 /// Async wrapper for zmq::socket_t with callback on data received.
+/// Supports heartbeat mode which will create heartbeat connection with the server that will not be auto-terminated when
+/// there is no communication on it from the server side. Used to keep the server alive all the time
+/// Objects of this type will start a thread that will enable async send and recieve of data
 class ZmqClient {
 public:
 	typedef std::function<void(const VRayMessage &, ZmqClient *)> ZmqOnMessageCallback;
 
-	ZmqClient(bool isHeatbeat = false);
+	/// Create a new client - in unconnected state, call ::connect to initiate connection
+	/// @param isHeartbeat create the client in heartbeat mode
+	ZmqClient(bool isHeartbeat = false);
 	~ZmqClient();
+
+	ZmqClient(const ZmqClient &) = delete;
+	ZmqClient &operator=(const ZmqClient &) = delete;
 
 	/// Send data with size, the data will be copied inside and can be safely freed after the function returns
 	/// @data - pointer to bytes
@@ -139,7 +147,6 @@ public:
 	bool waitForMessages(int timeout = 500);
 
 private:
-	void sendDataMessage(zmq::message_t & msg);
 
 	typedef std::chrono::high_resolution_clock::time_point time_point;
 
@@ -389,7 +396,7 @@ inline void ZmqClient::workerThread(volatile bool & socketInit, std::mutex & mtx
 			return;
 		}
 
-		if (!didWork) {
+		if (!didWork && isWorking) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 	}
