@@ -68,8 +68,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, std::string 
 	int size = 0;
 	stream >> size;
 
-	// either push back char by char, or do this
-	value = std::string(stream.getCurrent(), size);
+	value.assign(stream.getCurrent(), size);
 	stream.forward(size);
 
 	return stream;
@@ -105,6 +104,7 @@ inline void readListNonPOD(DeserializerStream & stream, VRayBaseTypes::AttrList<
 	list.init();
 	int size = 0;
 	stream >> size;
+	list.getData()->reserve(size);
 	for (int c = 0; c < size; ++c) {
 		T item;
 		stream >> item;
@@ -151,6 +151,7 @@ inline DeserializerStream & operator>>(DeserializerStream & stream, VRayBaseType
 	int size = 0;
 	stream >> inst.frameNumber >> size;
 	inst.data.init();
+	inst.data.getData()->reserve(size);
 	for (int c = 0; c < size; ++c) {
 		VRayBaseTypes::AttrInstancer::Item item;
 		stream >> item;
