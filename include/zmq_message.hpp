@@ -152,64 +152,79 @@ public:
 		}
 	}
 
+	/// Get plugin property
 	const std::string & getProperty() const {
-		return this->pluginProperty;
+		return pluginProperty;
 	}
 
+	/// Get the plugin instance id
 	const std::string & getPlugin() const {
-		return this->pluginName;
+		return pluginName;
 	}
 
+	/// Get the plugin type name
 	const std::string & getPluginType() const {
-		return this->pluginType;
+		return pluginType;
 	}
 
+	/// Get the message type
 	Type getType() const {
 		return type;
 	}
 
+	/// If type == ChangePlugin then get the plugin action
 	PluginAction getPluginAction() const {
 		return pluginAction;
 	}
 
+	/// If type == ChangeRenderer then get the renderer action
 	RendererAction getRendererAction() const {
 		return rendererAction;
 	}
 
+	/// If PluginAction will update plugin property check if it should be set as string
 	ValueSetter getValueSetter() const {
 		return valueSetter;
 	}
 
+	/// Get renderer type if renderer action is init
 	RendererType getRendererType() const {
 		return rendererType;
 	}
 
+	/// Get renderer statate for renderer action set renderer state
 	RendererState getRendererState() const {
 		return rendererState;
 	}
 
+	/// Get dr flags for renderer init renderer action
 	DRFlags getDrFlags() const {
 		return drFlags;
 	}
 
+	/// Get logLevel for VRay log messages
 	int getLogLevel() const {
 		return logLevel;
 	}
 
+	/// Get the renderer size for renderer action resize
 	void getRendererSize(int & width, int & height) const {
-		width = this->rendererWidth;
-		height = this->rendererHeight;
+		width = rendererWidth;
+		height = rendererHeight;
 	}
 
+	/// If message is update plugin param, get pointer to the internal param value
 	template <typename T>
 	const T * getValue() const {
 		return value.asPtr<T>();
 	}
 
+	/// If message is update plugin param get the attr value object that stores the param value
 	const VRayBaseTypes::AttrValue & getAttrValue() const {
 		return value;
 	}
 
+	/// If message is update plugin param, get the value type
 	VRayBaseTypes::ValueType getValueType() const {
 		return value.type;
 	}
@@ -319,12 +334,6 @@ public:
 	}
 
 private:
-	template <typename T>
-	T * setValue() {
-		new(value.asPtr<T>)T();
-		return value.asPtr<T>;
-	}
-
 	static zmq::message_t fromStream(SerializerStream & strm) {
 		return fromData(strm.getData(), strm.getSize());
 	}
@@ -369,9 +378,6 @@ private:
 		}
 	}
 
-	char * data() {
-		return reinterpret_cast<char*>(this->message.data());
-	}
 
 	zmq::message_t            message;
 	Type                      type;
